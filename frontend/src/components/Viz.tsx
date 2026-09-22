@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type {
-  ArrayInfo,
   LinkedList,
   PointerInfo,
   RunResult,
@@ -26,11 +25,6 @@ function fmtVar(v: VarMeta): string {
   return String(v.value);
 }
 
-function varChanged(a?: VarMeta, b?: VarMeta): boolean {
-  if (!a || !b) return false;
-  return JSON.stringify(a.value ?? a.fields) !== JSON.stringify(b.value ?? b.fields);
-}
-
 function pickPrimaryList(ev: TraceEvent | null): LinkedList | null {
   if (!ev || !ev.linked_lists.length) return null;
   const lists = ev.linked_lists.filter((l) => l.nodes.length > 0);
@@ -40,7 +34,6 @@ function pickPrimaryList(ev: TraceEvent | null): LinkedList | null {
   return lists.reduce((a, b) => (b.nodes.length > a.nodes.length ? b : a));
 }
 
-/** resolve indices compared in line like: if (a[j] > a[j + 1]) */
 function compareIndices(line: string, ev: TraceEvent, arrName: string): number[] {
   const re = new RegExp(`${arrName}\\[([^\\]]+)\\]`, "g");
   const out: number[] = [];
@@ -64,15 +57,21 @@ function compareIndices(line: string, ev: TraceEvent, arrName: string): number[]
   return out;
 }
 
+function comparisonIndices(line: string, ev: TraceEvent, arrName: string): number[] {
+  if (!new RegExp(`${arrName}\\[[^\\]]+\\]\\s*[<>]=?\\s*${arrName}\\[`).test(line)) return [];
+  return compareIndices(line, ev, arrName);
+}
+
+/* ── pointer map geometry ── */
 const ROW_H = 64;
-const BOX_W = 210;
+const BOX_W = 220;
 const BOX_X = 16;
 const RIGHT_EDGE = BOX_X + BOX_W;
 
 function elbowPath(x1: number, y1: number, x2: number, y2: number, bx: number): string {
   const dy = y2 - y1;
   if (Math.abs(dy) < 2) return `M ${x1} ${y1} L ${x2} ${y2}`;
-  const r = Math.min(12, Math.abs(dy) / 2, Math.abs(bx - x1));
+  const r = Math.min(14, Math.abs(dy) / 2, Math.abs(bx - x1));
   const s = Math.sign(dy);
   return (
     `M ${x1} ${y1} L ${bx - r} ${y1} ` +
@@ -94,7 +93,7 @@ function ArrowLine({ y1, y2, bx, color }: { y1: number; y2: number; bx: number; 
     const start = performance.now();
     let raf = 0;
     const tick = (t: number) => {
-      const k = Math.min(1, (t - start) / 340);
+      const k = Math.min(1, (t - start) / 380);
       const e = 1 - Math.pow(1 - k, 3);
       setCur({ y1: a.y1 + (y1 - a.y1) * e, y2: a.y2 + (y2 - a.y2) * e });
       if (k < 1) raf = requestAnimationFrame(tick);
@@ -110,18 +109,14 @@ function ArrowLine({ y1, y2, bx, color }: { y1: number; y2: number; bx: number; 
       d={d}
       stroke={color}
       fill="none"
-      strokeWidth={2}
-      markerEnd="url(#arrowhead)"
+      strokeWidth={1.5}
+      markerEnd="url(#ah)"
       style={{ stroke: color }}
     />
   );
 }
 
-/* append-only layout slots so boxes never jump */
-function boxData(
-  name: string,
-  ev: TraceEvent
-): { kind: "ptr" | "array" | "var"; label: string; sub: string } {
+function boxData(name: string, ev: TraceEvent): { kind: "ptr" | "array" | "var"; label: string; sub: string } {
   const p = ev.pointers.find((x) => x.name === name);
   if (p) {
     const targetDesc = p.null
@@ -143,7 +138,6 @@ function boxData(
   return { kind: "var", label: name, sub: v ? fmtVar(v) : "" };
 }
 
-/* append-only slots: stable positions across the whole run */
 function buildSlots(events: TraceEvent[], index: number) {
   const order: string[] = [];
   const slot: Record<string, number> = {};
@@ -162,6 +156,7 @@ function buildSlots(events: TraceEvent[], index: number) {
   return { order, slot };
 }
 
+/* ── Pointer map ── */
 function PointerMap({
   ev,
   prev,
@@ -179,23 +174,21 @@ function PointerMap({
     ...(ev.pointers || []).map((p) => p.name),
   ]);
   const shown = order.filter((n) => visible.has(n));
+  if (!shown.length) return null;
 
-  if (!shown.length) {
-    return <div className={styles.emptyHint}>等待变量出现 —— 点 ▶ RUN 开始</div>;
-  }
-
-  const height = order.length * ROW_H + 48;
-  const centerY = (i: number) => 28 + i * ROW_H + ROW_H / 2;
+  const height = order.length * ROW_H + 40;
+  const centerY = (i: number) => 24 + i * ROW_H + ROW_H / 2;
 
   const arrows = ev.pointers
     .map((p, i) => {
       if (p.null || !p.target || !(p.target in slot)) return null;
+      const color = ev.event === "write" && p.name === "p" ? "#fbbf24" : "#22d3ee";
       return {
         id: p.name,
         y1: centerY(slot[p.name]),
         y2: centerY(slot[p.target]),
-        bx: RIGHT_EDGE + 40 + i * 22,
-        color: "#a78bfa",
+        bx: RIGHT_EDGE + 36 + i * 20,
+        color,
       };
     })
     .filter(Boolean) as { id: string; y1: number; y2: number; bx: number; color: string }[];
@@ -215,13 +208,13 @@ function PointerMap({
   return (
     <svg
       className={styles.mapSvg}
-      viewBox={`0 0 560 ${height}`}
-      preserveAspectRatio="xMinYMin meet"
-      style={{ height: Math.max(220, height) }}
+      viewBox={`0 0 620 ${height}`}
+      preserveAspectRatio="xMidYMid meet"
+      style={{ height: Math.max(200, height) }}
     >
       <defs>
-        <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
-          <path d="M0,0 L8,4 L0,8 z" fill="#a78bfa" />
+        <marker id="ah" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+          <path d="M0,0 L7,3.5 L0,7 z" fill="#22d3ee" />
         </marker>
       </defs>
       {arrows.map((a) => (
@@ -230,7 +223,7 @@ function PointerMap({
       {shown.map((name) => {
         const i = slot[name];
         const b = boxData(name, ev);
-        const y = 28 + i * ROW_H;
+        const y = 24 + i * ROW_H;
         const changed =
           name in prevVals &&
           JSON.stringify(prevVals[name]) !==
@@ -245,29 +238,23 @@ function PointerMap({
         if (b.kind === "ptr") cls += " " + styles.boxPtr;
         else if (b.kind === "array") cls += " " + styles.boxArr;
         if (changed) cls += " " + styles.boxFlash;
-        // array cell target highlight
         const tgtIdx = targeted && targeted.target_index != null ? targeted.target_index : null;
         return (
-          <g key={name} transform={`translate(${BOX_X}, ${y})`} className={styles.boxG}>
-            <rect
-              className={cls}
-              width={BOX_W}
-              height={ROW_H - 12}
-              rx={8}
-            />
-            <text x={12} y={22} className={styles.boxName}>
-              {b.label}
-            </text>
-            <text x={12} y={40} className={styles.boxVal}>
+          <g
+            key={name}
+            style={{ transform: `translate(${BOX_X}px, ${y}px)` }}
+            className={styles.boxG}
+          >
+            <rect className={cls} width={BOX_W} height={ROW_H - 14} rx={4} />
+            <text x={14} y={24} className={styles.boxName}>{b.label}</text>
+            <text x={14} y={42} className={styles.boxVal}>
               {b.sub}
               {b.kind === "array" && tgtIdx != null ? (
-                <tspan className={styles.tgtCell} dx={6}>
-                  ⌖[{tgtIdx}]
-                </tspan>
+                <tspan className={styles.tgtCell} dx={6}>⌖[{tgtIdx}]</tspan>
               ) : null}
             </text>
             {b.kind === "ptr" && (
-              <circle cx={BOX_W} cy={(ROW_H - 12) / 2} r={3.5} fill="#a78bfa" />
+              <circle cx={BOX_W} cy={(ROW_H - 14) / 2} r={3} fill="#22d3ee" />
             )}
           </g>
         );
@@ -276,19 +263,12 @@ function PointerMap({
   );
 }
 
-/* ---------- array strip ---------- */
-
-/** indices referenced by a comparison like a[j] > a[j + 1] — regardless of event class */
-function comparisonIndices(line: string, ev: TraceEvent, arrName: string): number[] {
-  if (!new RegExp(`${arrName}\\[[^\\]]+\\]\\s*[<>]=?\\s*${arrName}\\[`).test(line)) return [];
-  return compareIndices(line, ev, arrName);
-}
-
+/* ── Array memory cells ── */
 function ArrayStrip({ ev, prev }: { ev: TraceEvent; prev: TraceEvent | null }) {
   if (!ev.arrays.length) return null;
+
   return (
-    <div className={styles.section}>
-      <div className={styles.sectionTitle}>数组 / 内存</div>
+    <div className={styles.arrBlock}>
       {ev.arrays.map((arr) => {
         const prevArr = prev?.arrays.find((a) => a.name === arr.name);
         const cmp = comparisonIndices(ev.line_text, ev, arr.name);
@@ -300,26 +280,43 @@ function ArrayStrip({ ev, prev }: { ev: TraceEvent; prev: TraceEvent | null }) {
           });
         }
         const base = arr.addr ? parseInt(arr.addr, 16) : 0;
+        const pitch = 72; // cell width
+
         return (
-          <div key={arr.name} className={styles.arrBlock}>
+          <div key={arr.name} className={styles.arrBlock} style={{ width: "100%", alignItems: "center" }}>
             <div className={styles.arrHead}>
-              <span className={styles.arrName}>
-                {arr.name}[{arr.length}]
-              </span>
+              <span className={styles.arrName}>{arr.name}[{arr.length}]</span>
               <span className={styles.arrMeta}>
-                {arr.type} · base {arr.addr ?? "?"} · {arr.elem_size}B/cell
+                {arr.type} · base {arr.addr ?? "?"} · {arr.elem_size}B
               </span>
             </div>
             <div className={styles.arrRow}>
               {arr.elems.map((v, i) => {
                 let cls = styles.cell;
-                if (swap && (i === swap.i || i === swap.j)) cls += " " + styles.cellSwap;
-                else if (cmp.includes(i)) cls += " " + styles.cellCmp;
-                else if (changedIdx.has(i)) cls += " " + styles.cellWrite;
+                let fromPx = "0px";
+                let valKey = `${i}-${ev.step}`;
+
+                if (swap && (i === swap.i || i === swap.j)) {
+                  cls += " " + styles.cellSwap;
+                  // value at i came from j (and vice versa): cross-in from opposite side
+                  fromPx = `${(i < swap.j ? 1 : -1) * Math.abs(swap.j - swap.i) * pitch}px`;
+                  cls += " " + styles.cellSwapIn;
+                } else if (cmp.includes(i)) {
+                  cls += " " + styles.cellCmp;
+                } else if (changedIdx.has(i)) {
+                  cls += " " + styles.cellWrite;
+                } else {
+                  valKey = String(i); // stable for non-highlighted cells
+                }
+
                 return (
-                  <div key={i} className={cls}>
+                  <div
+                    key={valKey}
+                    className={cls}
+                    style={swap && (i === swap.i || i === swap.j) ? ({ ["--from" as string]: fromPx } as React.CSSProperties) : undefined}
+                  >
+                    <div className={styles.cellIdx}>{i}</div>
                     <div className={styles.cellVal}>{v === null ? "?" : v}</div>
-                    <div className={styles.cellIdx}>[{i}]</div>
                     <div className={styles.cellAddr}>
                       {base ? "0x" + (base + i * (arr.elem_size || 4)).toString(16) : "—"}
                     </div>
@@ -330,231 +327,159 @@ function ArrayStrip({ ev, prev }: { ev: TraceEvent; prev: TraceEvent | null }) {
           </div>
         );
       })}
-      {ev.arrays.some((a) => comparisonIndices(ev.line_text, ev, a.name).length > 0) && (
-        <div className={styles.cmpNote}>▲ 高亮单元格正在比较</div>
-      )}
     </div>
   );
 }
 
-/* ---------- linked list ---------- */
+/* ── Linked list ── */
+const NODE_W = 96;
+const NODE_H = 54;
+const NODE_GAP = 64;
 
-const NODE_W = 92;
-const NODE_H = 56;
-const NODE_GAP = 56;
-
-function LinkedListView({ ev }: { ev: TraceEvent }) {
+function LinkedListView({ ev, prev }: { ev: TraceEvent; prev: TraceEvent | null }) {
   const primary = pickPrimaryList(ev);
   if (!primary) return null;
+  const prevList = prev ? pickPrimaryList(prev) : null;
+
   const highlight = new Set<string>();
   ev.linked_lists.forEach((l) => {
     if (l !== primary && l.nodes.length) highlight.add(l.nodes[0].addr);
   });
-  const width = Math.max(560, 40 + primary.nodes.length * (NODE_W + NODE_GAP));
-  return (
-    <div className={styles.section}>
-      <div className={styles.sectionTitle}>
-        链表 · {primary.head}
-        <span className={styles.sectionSub}>{primary.nodes.length} nodes · {primary.next_field}</span>
-      </div>
-      <svg
-        className={styles.listSvg}
-        viewBox={`0 0 ${width} ${NODE_H + 60}`}
-        style={{ height: NODE_H + 60, width }}
-      >
-        <defs>
-          <marker id="llhead" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
-            <path d="M0,0 L8,4 L0,8 z" fill="#4fd1c5" />
-          </marker>
-        </defs>
-        <text x={4} y={14} className={styles.headLabel}>
-          head
-        </text>
-        {primary.nodes.map((n, i) => {
-          const x = 4 + i * (NODE_W + NODE_GAP);
-          const isCur = highlight.has(n.addr);
-          return (
-            <g
-              key={n.addr}
-              transform={`translate(${x}, 24)`}
-              className={styles.nodeG + (isCur ? " " + styles.nodeCur : "")}
-            >
-              <rect
-                className={styles.nodeRect + (isCur ? " " + styles.nodeRectCur : "")}
-                width={NODE_W}
-                height={NODE_H}
-                rx={10}
-              />
-              <text x={16} y={34} className={styles.nodeLabel}>
-                {n.label === null || n.label === undefined ? "?" : n.label}
-              </text>
-              <circle cx={NODE_W} cy={NODE_H / 2} r={4} fill="#4fd1c5" />
-              {i < primary.nodes.length - 1 && (
-                <line
-                  x1={NODE_W + 4}
-                  y1={NODE_H / 2}
-                  x2={NODE_W + NODE_GAP - 10}
-                  y2={NODE_H / 2}
-                  stroke="#4fd1c5"
-                  strokeWidth={2}
-                  markerEnd="url(#llhead)"
-                />
-              )}
-              <text x={NODE_W + 8} y={NODE_H / 2 - 10} className={styles.nextLabel}>
-                {primary.next_field}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
-    </div>
-  );
-}
 
-/* ---------- variables / stack / stats ---------- */
+  const prevAddrs = new Set((prevList?.nodes ?? []).map((n) => n.addr));
+  const width = Math.max(480, 40 + primary.nodes.length * (NODE_W + NODE_GAP));
 
-function VariablesPanel({ ev, prev }: { ev: TraceEvent; prev: TraceEvent | null }) {
-  const rows: { name: string; meta: VarMeta }[] = Object.entries(ev.variables).map(
-    ([name, meta]) => ({ name, meta })
-  );
-  const ptrRows = ev.pointers.filter((p) => !ev.variables[p.name]);
   return (
-    <div className={styles.sideCard}>
-      <div className={styles.sideTitle}>变量</div>
-      {rows.length === 0 && ptrRows.length === 0 && (
-        <div className={styles.emptySmall}>暂无变量</div>
-      )}
-      {rows.map(({ name, meta }) => {
-        const changed = varChanged(prev?.variables[name], meta);
+    <svg
+      className={styles.listSvg}
+      viewBox={`0 0 ${width} ${NODE_H + 56}`}
+      style={{ width, height: NODE_H + 56 }}
+    >
+      <defs>
+        <marker id="llh" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+          <path d="M0,0 L7,3.5 L0,7 z" fill="#22d3ee" />
+        </marker>
+      </defs>
+      <text x={4} y={14} className={styles.headLabel}>HEAD</text>
+      {primary.nodes.map((n, i) => {
+        const x = 4 + i * (NODE_W + NODE_GAP);
+        const isCur = highlight.has(n.addr);
+        const isNew = !prevAddrs.has(n.addr) && prevList !== null;
         return (
-          <div
-            key={`${name}@${changed ? ev.step : "s"}`}
-            className={styles.varRow + (changed ? " " + styles.varFlash : "")}
+          <g
+            key={n.addr}
+            style={{ transform: `translate(${x}px, 24px)` }}
+            className={`${styles.nodeG}${isNew ? " " + styles.nodeEnter : ""}`}
           >
-            <span className={styles.varName}>{name}</span>
-            <span className={styles.varType}>{meta.type}</span>
-            <span className={styles.varVal}>{fmtVar(meta)}</span>
-          </div>
+            <rect
+              className={`${styles.nodeRect}${isCur ? " " + styles.nodeRectCur : ""}`}
+              width={NODE_W}
+              height={NODE_H}
+              rx={4}
+            />
+            <text x={NODE_W / 2} y={NODE_H / 2 + 6} textAnchor="middle" className={styles.nodeLabel}>
+              {n.label === null || n.label === undefined ? "?" : n.label}
+            </text>
+            <text x={NODE_W / 2} y={NODE_H - 4} textAnchor="middle" className={styles.nodeAddr}>
+              {n.addr.slice(0, 10)}
+            </text>
+            <circle cx={NODE_W} cy={NODE_H / 2} r={3} fill="#22d3ee" />
+          </g>
         );
       })}
-      {ptrRows.map((p) => {
-        const prevP = prev?.pointers.find((x) => x.name === p.name);
-        const changed = !!prevP && prevP.value !== p.value;
+      {/* arrows between nodes — keyed by pair so insert triggers draw-in */}
+      {primary.nodes.slice(0, -1).map((n, i) => {
+        const x1 = 4 + i * (NODE_W + NODE_GAP) + NODE_W;
+        const y = 24 + NODE_H / 2;
+        const key = `${primary.nodes[i].addr}->${primary.nodes[i + 1].addr}`;
         return (
-          <div
-            key={`${p.name}@${changed ? ev.step : "s"}`}
-            className={styles.varRow + (changed ? " " + styles.varFlash : "")}
-          >
-            <span className={styles.varName}>*{p.name}</span>
-            <span className={styles.varType}>ptr</span>
-            <span className={styles.varVal}>
-              {p.null ? "NULL" : p.target ? `→ ${p.target}` : p.value}
-            </span>
-          </div>
+          <line
+            key={key}
+            x1={x1 + 4}
+            y1={y}
+            x2={x1 + NODE_GAP - 8}
+            y2={y}
+            className={`${styles.linkLine} ${styles.linkDraw}`}
+            markerEnd="url(#llh)"
+          />
         );
       })}
-    </div>
+    </svg>
   );
 }
 
-function StackPanel({ ev }: { ev: TraceEvent }) {
-  return (
-    <div className={styles.sideCard}>
-      <div className={styles.sideTitle}>调用栈</div>
-      <div className={styles.stackList}>
-        {ev.stack.map((fn, i) => (
-          <div
-            key={fn + i}
-            className={styles.stackFrame + (i === 0 ? " " + styles.stackCurrent : "")}
-          >
-            {i === 0 ? "▶ " : "  "}
-            {fn}()
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function StatsPanel({ ev, result }: { ev: TraceEvent; result: RunResult }) {
-  const st = ev.stats ?? { comparisons: 0, swaps: 0, visits: 0 };
-  const hasMid = "mid" in ev.variables;
-  let complexity = "";
-  if (hasMid && st.comparisons > 0) complexity = "二分查找 · O(log n)";
-  else if (st.swaps > 0 || (result.stats?.swaps ?? 0) > 0)
-    complexity = "交换类排序 · Best O(n) / Avg O(n²) / Worst O(n²)";
-  else if (st.comparisons > 0) complexity = "比较驱动 · 见算法本身";
-  return (
-    <div className={styles.statsBar}>
-      <span className={styles.chip}>⇄ 比较 {st.comparisons}</span>
-      <span className={styles.chipChipOrange}>⇅ 交换 {st.swaps}</span>
-      <span className={styles.chipChipBlue}>▦ 访问 {st.visits}</span>
-      {complexity && <span className={styles.complexity}>{complexity}</span>}
-      <span className={styles.eventBadge} data-ev={ev.event}>
-        {ev.event}
-      </span>
-    </div>
-  );
-}
-
-/* ---------- main viz ---------- */
-
+/* ── main viz ── */
 export default function Viz({ result, index }: { result: RunResult | null; index: number }) {
-  const stdoutRef = useRef<HTMLPreElement | null>(null);
   const events = result?.events ?? [];
   const i = Math.min(index, Math.max(0, events.length - 1));
   const ev = events.length ? events[i] : null;
   const prev = ev && i > 0 ? events[i - 1] : null;
-  const { order, slot } = useMemo(
-    () => buildSlots(events, i),
-    [events, i]
-  );
+  const { order, slot } = useMemo(() => buildSlots(events, i), [events, i]);
 
-  useEffect(() => {
-    const el = stdoutRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [ev?.stdout]);
-
-  if (!ev) {
+  if (!ev || !result) {
     return (
       <div className={styles.wrap}>
         <div className={styles.idle}>
-          <div className={styles.idleLogo}>▶</div>
-          <div>写一段 C，点右上角 RUN</div>
-          <div className={styles.idleSub}>代码会被真实编译执行，过程逐步动画回放</div>
+          <div className={styles.idleLogo}>C<span>-</span>FORGE</div>
+          <div className={styles.idleSub}>C / MEMORY / DATA STRUCTURES</div>
+          <button className={styles.idleBtn} disabled onClick={() => {}}>Run</button>
+          <div className={styles.idleHint}>Open an example or write C code to begin.</div>
         </div>
       </div>
     );
   }
 
+  const st = ev.stats ?? { comparisons: 0, swaps: 0, visits: 0 };
+  const isLast = i >= events.length - 1;
+  const showSorted = isLast && st.swaps > 0;
+
+  const hasPointerView =
+    (ev.pointers.length > 0 || Object.keys(ev.variables).length > 0) && ev.linked_lists.length === 0;
+  const hasArray = ev.arrays.length > 0;
+  const hasList = ev.linked_lists.length > 0;
+
+  const sections = [hasPointerView, hasArray, hasList].filter(Boolean).length;
+
   return (
     <div className={styles.wrap}>
-      <StatsPanel ev={ev} result={result!} />
-      <div className={styles.cols}>
-        <div className={styles.mainCol}>
-          <div className={styles.section}>
-            <div className={styles.sectionTitle}>
-              内存 / 指针关系
-              <span className={styles.sectionSub}>
-                {ev.function} · L{ev.line}
-              </span>
-            </div>
+      <div className={styles.vizBar}>
+        <span className={styles.vizLabel}>visualization</span>
+        <span className={styles.vizMeta}>
+          <span>{ev.function} · L{ev.line}</span>
+          <span className={styles.statC}>COMPARE {st.comparisons}</span>
+          <span className={styles.statS}>SWAP {st.swaps}</span>
+          {showSorted && <span className={styles.sorted}>SORTED · {st.swaps} swaps · {st.comparisons} comparisons</span>}
+        </span>
+      </div>
+
+      <div className={styles.stage}>
+        {hasPointerView && (
+          <div className={styles.stageBlock}>
+            <span className={styles.stageTag}>memory · pointers</span>
             <PointerMap ev={ev} prev={prev} order={order} slot={slot} />
           </div>
-          <ArrayStrip ev={ev} prev={prev} />
-          <LinkedListView ev={ev} />
-        </div>
-        <div className={styles.sideCol}>
-          <VariablesPanel ev={ev} prev={prev} />
-          <StackPanel ev={ev} />
-          <div className={styles.sideCard}>
-            <div className={styles.sideTitle}>STDOUT</div>
-            <pre ref={stdoutRef} className={styles.stdout}>
-              {ev.stdout || <span className={styles.emptySmall}>(空)</span>}
-            </pre>
+        )}
+        {hasArray && (
+          <div className={styles.stageBlock}>
+            <span className={styles.stageTag}>array · memory cells</span>
+            <ArrayStrip ev={ev} prev={prev} />
           </div>
-        </div>
+        )}
+        {hasList && (
+          <div className={styles.stageBlock}>
+            <span className={styles.stageTag}>
+              linked list · {pickPrimaryList(ev)?.head} · {pickPrimaryList(ev)?.nodes.length} nodes
+            </span>
+            <LinkedListView ev={ev} prev={prev} />
+          </div>
+        )}
+        {sections === 0 && (
+          <div style={{ color: "var(--fg3)", fontFamily: "var(--mono)", fontSize: 13 }}>
+            no visualization data for this step
+          </div>
+        )}
       </div>
     </div>
   );
 }
+

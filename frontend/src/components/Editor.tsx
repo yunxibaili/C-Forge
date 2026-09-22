@@ -23,6 +23,7 @@ import { c } from "@codemirror/legacy-modes/mode/clike";
 import { tags } from "@lezer/highlight";
 
 const setLine = StateEffect.define<number>();
+const setErrorLine = StateEffect.define<number | null>();
 
 const lineField = StateField.define<DecorationSet>({
   create: () => Decoration.none,
@@ -39,63 +40,78 @@ const lineField = StateField.define<DecorationSet>({
   provide: (f) => EditorView.decorations.from(f),
 });
 
+const errField = StateField.define<DecorationSet>({
+  create: () => Decoration.none,
+  update(deco, tr) {
+    for (const e of tr.effects) {
+      if (e.is(setErrorLine)) {
+        if (e.value == null || e.value < 1) return Decoration.none;
+        const n = Math.min(tr.state.doc.lines, e.value);
+        const line = tr.state.doc.line(n);
+        return Decoration.set([Decoration.line({ class: "cm-cf-err" }).range(line.from)]);
+      }
+    }
+    return deco.map(tr.changes);
+  },
+  provide: (f) => EditorView.decorations.from(f),
+});
+
 const cfTheme = EditorView.theme(
   {
     "&": {
-      color: "#c9d1d9",
-      backgroundColor: "#0d1117",
+      color: "#d4d4d8",
+      backgroundColor: "transparent",
       height: "100%",
       fontSize: "13.5px",
     },
     ".cm-content": {
-      fontFamily: "Consolas, 'Cascadia Code', 'Courier New', monospace",
+      fontFamily: "Cascadia Code, Fira Code, Consolas, monospace",
       padding: "10px 0",
-      caretColor: "#4fd1c5",
+      caretColor: "#67e8f9",
     },
     ".cm-gutters": {
-      backgroundColor: "#0d1117",
-      color: "#4b5568",
+      backgroundColor: "transparent",
+      color: "#3a3a44",
       border: "none",
-      borderRight: "1px solid #1c2230",
+      borderRight: "1px solid rgba(255,255,255,0.07)",
     },
-    ".cm-lineNumbers .cm-gutterElement": { padding: "0 8px 0 12px" },
-    ".cm-activeLine": { backgroundColor: "rgba(56,139,253,0.07)" },
-    ".cm-activeLineGutter": {
-      backgroundColor: "rgba(56,139,253,0.07)",
-      color: "#58a6ff",
-    },
+    ".cm-lineNumbers .cm-gutterElement": { padding: "0 12px 0 16px" },
+    ".cm-activeLine": { backgroundColor: "rgba(255,255,255,0.02)" },
     ".cm-cf-line": {
-      backgroundColor: "rgba(79,209,197,0.14)",
-      boxShadow: "inset 3px 0 0 #4fd1c5",
+      backgroundColor: "rgba(103,232,249,0.05)",
+      boxShadow: "inset 2px 0 0 #22d3ee",
     },
     "&.cm-focused": { outline: "none" },
-    ".cm-selectionBackground, ::selection": { backgroundColor: "rgba(56,139,253,0.35)" },
-    ".cm-cursor": { borderLeftColor: "#4fd1c5" },
+    ".cm-selectionBackground, ::selection": { backgroundColor: "rgba(103,232,249,0.15)" },
+    ".cm-cursor": { borderLeftColor: "#67e8f9" },
     ".cm-scroller": { overflow: "auto" },
   },
   { dark: true }
 );
 
 const cfHighlight = HighlightStyle.define([
-  { tag: tags.keyword, color: "#ff7b72" },
-  { tag: [tags.controlKeyword, tags.operatorKeyword], color: "#ff7b72" },
-  { tag: tags.string, color: "#a5d6ff" },
-  { tag: [tags.number, tags.bool, tags.null], color: "#79c0ff" },
-  { tag: tags.comment, color: "#6e7681", fontStyle: "italic" },
-  { tag: tags.function(tags.variableName), color: "#d2a8ff" },
-  { tag: tags.typeName, color: "#ffa657" },
-  { tag: tags.definition(tags.variableName), color: "#ffa657" },
-  { tag: tags.operator, color: "#ff7b72" },
-  { tag: tags.className, color: "#ffa657" },
+  { tag: tags.keyword, color: "#7aa2c5" },
+  { tag: [tags.controlKeyword, tags.operatorKeyword], color: "#7aa2c5" },
+  { tag: tags.string, color: "#9aba9a" },
+  { tag: [tags.number, tags.bool, tags.null], color: "#c8b88a" },
+  { tag: tags.comment, color: "#5c5c66", fontStyle: "italic" },
+  { tag: tags.function(tags.variableName), color: "#c9b896" },
+  { tag: tags.typeName, color: "#9a8fb5" },
+  { tag: tags.definition(tags.variableName), color: "#a0a0a8" },
+  { tag: tags.operator, color: "#8b8b94" },
+  { tag: tags.className, color: "#9a8fb5" },
+  { tag: tags.propertyName, color: "#b0b0b8" },
+  { tag: tags.variableName, color: "#d4d4d8" },
 ]);
 
 interface Props {
   code: string;
   onChange: (code: string) => void;
   activeLine: number;
+  errorLine?: number | null;
 }
 
-export default function Editor({ code, onChange, activeLine }: Props) {
+export default function Editor({ code, onChange, activeLine, errorLine }: Props) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
@@ -113,12 +129,12 @@ export default function Editor({ code, onChange, activeLine }: Props) {
         syntaxHighlighting(cfHighlight),
         StreamLanguage.define(c),
         lineField,
+        errField,
         cfTheme,
         keymap.of([...defaultKeymap, ...historyKeymap]),
         EditorView.updateListener.of((u) => {
           if (u.docChanged) onChangeRef.current(u.state.doc.toString());
         }),
-        EditorView.lineWrapping,
       ],
     });
     const view = new EditorView({ state, parent: hostRef.current });
@@ -151,5 +167,11 @@ export default function Editor({ code, onChange, activeLine }: Props) {
     });
   }, [activeLine]);
 
-  return <div ref={hostRef} style={{ flex: 1, minHeight: 0 }} />;
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    view.dispatch({ effects: setErrorLine.of(errorLine ?? null) });
+  }, [errorLine]);
+
+  return <div ref={hostRef} style={{ flex: 1, minHeight: 0, height: "100%" }} />;
 }

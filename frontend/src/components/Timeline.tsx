@@ -1,17 +1,18 @@
+import { useState } from "react";
 import type { TraceEvent } from "../types";
 import styles from "./Timeline.module.css";
 
 const EVENT_COLORS: Record<string, string> = {
-  start: "#64748b",
-  step: "#475569",
-  write: "#4fd1c5",
-  array_write: "#4fd1c5",
-  swap: "#f97316",
-  swap_step: "#ea580c",
-  compare: "#eab308",
-  pointer_move: "#a78bfa",
-  call: "#38bdf8",
-  return: "#38bdf8",
+  start: "#3a3a44",
+  step: "#4a4a55",
+  write: "#67e8f9",
+  array_write: "#67e8f9",
+  swap: "#fbbf24",
+  swap_step: "#d97706",
+  compare: "#fbbf24",
+  pointer_move: "#22d3ee",
+  call: "#8b93c7",
+  return: "#6b7394",
 };
 
 interface Props {
@@ -27,6 +28,13 @@ interface Props {
   onReset: () => void;
 }
 
+function tipFor(ev: TraceEvent | null, idx: number): string {
+  if (!ev) return "";
+  let s = `Step ${idx + 1}  ·  L${ev.line}  ·  ${ev.event}`;
+  if (ev.swap) s += `  ·  a[${ev.swap.i}] ↔ a[${ev.swap.j}]`;
+  return s;
+}
+
 export default function Timeline({
   total,
   index,
@@ -40,60 +48,49 @@ export default function Timeline({
   onReset,
 }: Props) {
   const pct = total > 1 ? (index / (total - 1)) * 100 : 0;
-  const label = event
-    ? `Step ${index + 1}/${total} · L${event.line} · ${event.function}() · ${event.event}${
-        event.swap ? ` [${event.swap.i} ⇄ ${event.swap.j}]` : ""
-      }`
-    : "未运行 —— 点 ▶ RUN";
+  const [hoverPct, setHoverPct] = useState<number | null>(null);
+
+  const hoverIdx =
+    hoverPct !== null && total > 1
+      ? Math.max(0, Math.min(total - 1, Math.round((hoverPct / 100) * (total - 1))))
+      : null;
 
   return (
     <div className={styles.bar}>
       <div className={styles.transport}>
-        <button className={styles.tbtn} onClick={onReset} disabled={!total} title="回到起点">
-          ⏮
-        </button>
+        <button className={styles.tbtn} onClick={onReset} disabled={!total} title="Start">⏮</button>
+        <button className={styles.tbtn} onClick={onPrev} disabled={!total || index <= 0} title="Prev">◀</button>
         <button
-          className={styles.tbtn}
-          onClick={onPrev}
-          disabled={!total || index <= 0}
-          title="上一步"
-        >
-          ◀
-        </button>
-        <button
-          className={styles.tbtn + (playing ? " " + styles.tbtnActive : "")}
+          className={`${styles.tbtn} ${playing ? styles.tbtnActive : ""}`}
           onClick={onPlay}
           disabled={!total || index >= total - 1}
-          title="播放 / 暂停"
-        >
-          {playing ? "⏸" : "▶"}
-        </button>
-        <button
-          className={styles.tbtn}
-          onClick={onNext}
-          disabled={!total || index >= total - 1}
-          title="下一步"
-        >
-          ▶
-        </button>
+          title="Play / pause"
+        >{playing ? "⏸" : "▶"}</button>
+        <button className={styles.tbtn} onClick={onNext} disabled={!total || index >= total - 1} title="Next">▶</button>
       </div>
 
-      <div className={styles.trackArea}>
+      <div
+        className={styles.trackArea}
+        onMouseMove={(e) => {
+          const r = e.currentTarget.getBoundingClientRect();
+          setHoverPct(((e.clientX - r.left) / r.width) * 100);
+        }}
+        onMouseLeave={() => setHoverPct(null)}
+      >
         <div className={styles.track}>
           <div className={styles.ticks}>
-            {events.slice(0, 500).map((e, i) => (
+            {events.slice(0, 800).map((e, i) => (
               <span
                 key={i}
-                className={
-                  styles.tick + (i === index ? " " + styles.tickActive : "")
-                }
+                className={i === index ? `${styles.tick} ${styles.tickActive}` : styles.tick}
                 style={{
                   left: `${total > 1 ? (i / (total - 1)) * 100 : 0}%`,
-                  background: i === index ? "#e6edf3" : EVENT_COLORS[e.event] || "#334155",
+                  background: i === index ? "#e4e4e8" : EVENT_COLORS[e.event] || "#3a3a44",
                 }}
               />
             ))}
           </div>
+          <div className={styles.progress} style={{ width: `${pct}%` }} />
           <div className={styles.thumb} style={{ left: `${pct}%` }} />
           <input
             className={styles.range}
@@ -103,16 +100,30 @@ export default function Timeline({
             value={index}
             disabled={!total}
             onChange={(e) => onScrub(parseInt(e.target.value, 10))}
-            aria-label="执行时间轴"
+            aria-label="Timeline"
           />
         </div>
         <div className={styles.scale}>
-          <span>1</span>
-          <span>{total || "-"}</span>
+          <span>0</span>
+          <span>{total || "—"}</span>
         </div>
+
+        {hoverIdx !== null && (
+          <div
+            className={styles.tooltip}
+            style={{
+              left: `calc(${total > 1 ? (hoverIdx / (total - 1)) * 100 : 0}% )`,
+              transform: hoverPct !== null && hoverPct > 80 ? "translateX(-100%)" : "translateX(0)",
+            }}
+          >
+            {tipFor(events[hoverIdx], hoverIdx)}
+          </div>
+        )}
       </div>
 
-      <div className={styles.label}>{label}</div>
+      <div className={styles.readout}>
+        {total ? `${index + 1} / ${total}` : "— / —"}
+      </div>
     </div>
   );
 }

@@ -7,7 +7,7 @@ export interface ExampleItem {
 export const EXAMPLES: ExampleItem[] = [
   {
     id: "pointers",
-    name: "指针 · 灵魂示例",
+    name: "Pointers",
     code: `#include <stdio.h>
 
 int main(void) {
@@ -21,7 +21,7 @@ int main(void) {
   },
   {
     id: "vars",
-    name: "基础变量",
+    name: "Variables",
     code: `#include <stdio.h>
 
 int main(void) {
@@ -35,7 +35,7 @@ int main(void) {
   },
   {
     id: "array",
-    name: "数组 + 指针",
+    name: "Array",
     code: `#include <stdio.h>
 
 int main(void) {
@@ -55,7 +55,7 @@ int main(void) {
   },
   {
     id: "list",
-    name: "链表 · 插入动画",
+    name: "Linked List",
     code: `#include <stdio.h>
 #include <stdlib.h>
 
@@ -96,7 +96,7 @@ int main(void) {
   },
   {
     id: "bubble",
-    name: "冒泡排序 · swap 动画",
+    name: "Bubble Sort",
     code: `#include <stdio.h>
 
 int main(void) {
