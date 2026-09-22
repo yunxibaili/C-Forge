@@ -553,7 +553,7 @@ int main(void) {
     topics: ["Linked List", "Pointer"],
     examRelevance: "high",
     url: "",
-    description: "Invert next pointers one node at a time with prev/cur/tail.",
+    description: "Invert next pointers one node at a time with prev/cur/next.",
     code: `#include <stdio.h>
 #include <stdlib.h>
 
@@ -1365,7 +1365,7 @@ int main(void) {
     topics: ["Recursion", "Function", "Complexity"],
     examRelevance: "medium",
     url: "https://pintia.cn/",
-    description: "Move n disks across three pegs with the classic three recursive calls.",
+    description: "Move n disks across three pegs using two recursive calls and one disk move per level.",
     code: `#include <stdio.h>
 
 int steps = 0;
@@ -1541,9 +1541,10 @@ int main(void) {
 
 int max_of(int *a, int n) {
     int m = *a;
-    int i;
-    for (i = 1; i < n; i++) {
-        if (*(a + i) > m) m = *(a + i);
+    int *p = a + 1;
+    int *end = a + n;
+    for (; p < end; p++) {
+        if (*p > m) m = *p;
     }
     return m;
 }

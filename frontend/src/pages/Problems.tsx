@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   DIFFICULTIES,
   EXAM_RELEVANCES,
@@ -26,6 +26,18 @@ export default function Problems() {
   const [topic, setTopic] = useState<Topic | "">("");
   const [difficulty, setDifficulty] = useState<Difficulty | "">("");
   const [exam, setExam] = useState<ExamRelevance | "">("");
+  const [sideOpen, setSideOpen] = useState(
+    () => typeof window === "undefined" || !window.matchMedia("(max-width: 900px)").matches
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 900px)");
+    const onChange = () => {
+      if (!mq.matches) setSideOpen(true);
+    };
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
 
   const list = useMemo(() => {
     const key = q.trim().toLowerCase();
@@ -60,38 +72,45 @@ export default function Problems() {
       <div className={styles.body}>
         <div className={styles.problemsLayout}>
           <aside>
-            <div className={styles.sideTitle}>Topics</div>
-            <button
-              className={`${styles.sideItem}${!topic ? " " + styles.sideActive : ""}`}
-              onClick={() => setTopic("")}
+            <details
+              className={styles.sidePanel}
+              open={sideOpen}
+              onToggle={(e) => setSideOpen(e.currentTarget.open)}
             >
-              All
-            </button>
-            {TOPICS.map((t) => (
+              <summary className={styles.sideToggle}>Topics / Source</summary>
+              <div className={styles.sideTitle}>Topics</div>
               <button
-                key={t}
-                className={`${styles.sideItem}${topic === t ? " " + styles.sideActive : ""}`}
-                onClick={() => setTopic(topic === t ? "" : t)}
+                className={`${styles.sideItem}${!topic ? " " + styles.sideActive : ""}`}
+                onClick={() => setTopic("")}
               >
-                {t}
+                All
               </button>
-            ))}
-            <div className={styles.sideTitle}>Source</div>
-            <button
-              className={`${styles.sideItem}${!source ? " " + styles.sideActive : ""}`}
-              onClick={() => setSource("")}
-            >
-              All
-            </button>
-            {SOURCES.map((s) => (
+              {TOPICS.map((t) => (
+                <button
+                  key={t}
+                  className={`${styles.sideItem}${topic === t ? " " + styles.sideActive : ""}`}
+                  onClick={() => setTopic(topic === t ? "" : t)}
+                >
+                  {t}
+                </button>
+              ))}
+              <div className={styles.sideTitle}>Source</div>
               <button
-                key={s.id}
-                className={`${styles.sideItem}${source === s.id ? " " + styles.sideActive : ""}`}
-                onClick={() => setSource(source === s.id ? "" : s.id)}
+                className={`${styles.sideItem}${!source ? " " + styles.sideActive : ""}`}
+                onClick={() => setSource("")}
               >
-                {s.label}
+                All
               </button>
-            ))}
+              {SOURCES.map((s) => (
+                <button
+                  key={s.id}
+                  className={`${styles.sideItem}${source === s.id ? " " + styles.sideActive : ""}`}
+                  onClick={() => setSource(source === s.id ? "" : s.id)}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </details>
           </aside>
 
           <section>

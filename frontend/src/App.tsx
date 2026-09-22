@@ -5,6 +5,7 @@ import ProblemDetail from "./pages/ProblemDetail";
 import { useRoute } from "./router";
 import { peekPlaygroundSeed, clearPlaygroundSeed } from "./playgroundSeed";
 import { Shell } from "./pages/Home";
+import pagesStyles from "./pages/pages.module.css";
 import { useEffect, useState } from "react";
 
 function PlaygroundPage() {
@@ -18,7 +19,7 @@ function PlaygroundPage() {
   }, []);
   return (
     <Shell active="playground">
-      <div style={{ height: "calc(100vh - 40px)", minHeight: 0 }}>
+      <div className={pagesStyles.playShell}>
         <Workbench key={seed ?? "default"} initialCode={seed ?? undefined} showExamples />
       </div>
     </Shell>

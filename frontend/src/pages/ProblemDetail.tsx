@@ -38,15 +38,7 @@ export default function ProblemDetail({ route }: { route: Extract<Route, { name:
 
   return (
     <Shell active="problems">
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          height: "calc(100vh - 40px)",
-          minHeight: 0,
-          background: "var(--bg0)",
-        }}
-      >
+      <div className={styles.detailShell}>
         <div
           style={{
             display: "flex",
@@ -76,7 +68,12 @@ export default function ProblemDetail({ route }: { route: Extract<Route, { name:
                 {problem.difficulty}
               </span>
               <span>
-                exam: {problem.examRelevance === "high" ? "重点" : problem.examRelevance}
+                exam:{" "}
+                {problem.examRelevance === "high"
+                  ? "重点"
+                  : problem.examRelevance === "medium"
+                  ? "普通"
+                  : "了解"}
               </span>
               <span>{src?.label ?? problem.source}</span>
               {problem.topics.map((t) => (
@@ -115,7 +112,7 @@ export default function ProblemDetail({ route }: { route: Extract<Route, { name:
           {problem.description}
         </div>
 
-        <div style={{ flex: 1, minHeight: 0 }}>
+        <div className={styles.detailMain}>
           <Workbench
             key={problem.id}
             initialCode={problem.code}

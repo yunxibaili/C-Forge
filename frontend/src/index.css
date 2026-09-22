@@ -82,3 +82,16 @@ button:disabled { opacity: 0.3; cursor: default; }
   background: rgba(220, 38, 38, 0.08) !important;
   box-shadow: inset 2px 0 0 rgba(220, 38, 38, 0.65) !important;
 }
+
+/* Mobile / short landscape: allow vertical page scroll */
+@media (max-width: 800px), (max-height: 500px) {
+  html,
+  body,
+  #root {
+    height: auto;
+    min-height: 100%;
+  }
+  body {
+    overflow: auto;
+  }
+}
