@@ -1,5 +1,5 @@
 .app {
-  height: 100vh;
+  height: 100%;
   display: grid;
   grid-template-rows: 40px 1fr 92px 76px;
   background: var(--bg0);
