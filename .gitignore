@@ -6,3 +6,4 @@ dist/
 *.exe
 .DS_Store
 backend/.venv/
+_dbg/
