@@ -153,7 +153,7 @@ export default function App() {
                 color: "var(--fg2)", padding: "5px 10px",
                 borderRadius: "4px", transition: "color .15s, background .15s",
               }}
-              onMouseEnter={(e) => { if (!b.disabled) { e.currentTarget.style.color = "var(--fg)"; e.currentTarget.style.background = "rgba(255,255,255,0.05)"; } }}
+              onMouseEnter={(e) => { if (!b.disabled) { e.currentTarget.style.color = "var(--fg)"; e.currentTarget.style.background = "rgba(0,0,0,0.05)"; } }}
               onMouseLeave={(e) => { e.currentTarget.style.color = "var(--fg2)"; e.currentTarget.style.background = "transparent"; }}
             >{b.label}</button>
           ))}

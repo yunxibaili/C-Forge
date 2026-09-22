@@ -59,7 +59,7 @@ const errField = StateField.define<DecorationSet>({
 const cfTheme = EditorView.theme(
   {
     "&": {
-      color: "#d4d4d8",
+      color: "#1a1a1e",
       backgroundColor: "transparent",
       height: "100%",
       fontSize: "13.5px",
@@ -67,41 +67,41 @@ const cfTheme = EditorView.theme(
     ".cm-content": {
       fontFamily: "Cascadia Code, Fira Code, Consolas, monospace",
       padding: "10px 0",
-      caretColor: "#67e8f9",
+      caretColor: "#0e7490",
     },
     ".cm-gutters": {
       backgroundColor: "transparent",
-      color: "#3a3a44",
+      color: "#a0a0aa",
       border: "none",
-      borderRight: "1px solid rgba(255,255,255,0.07)",
+      borderRight: "1px solid rgba(0,0,0,0.08)",
     },
     ".cm-lineNumbers .cm-gutterElement": { padding: "0 12px 0 16px" },
-    ".cm-activeLine": { backgroundColor: "rgba(255,255,255,0.02)" },
+    ".cm-activeLine": { backgroundColor: "rgba(0,0,0,0.03)" },
     ".cm-cf-line": {
-      backgroundColor: "rgba(103,232,249,0.05)",
-      boxShadow: "inset 2px 0 0 #22d3ee",
+      backgroundColor: "rgba(8,145,178,0.08)",
+      boxShadow: "inset 2px 0 0 #0891b2",
     },
     "&.cm-focused": { outline: "none" },
-    ".cm-selectionBackground, ::selection": { backgroundColor: "rgba(103,232,249,0.15)" },
-    ".cm-cursor": { borderLeftColor: "#67e8f9" },
+    ".cm-selectionBackground, ::selection": { backgroundColor: "rgba(8,145,178,0.18)" },
+    ".cm-cursor": { borderLeftColor: "#0e7490" },
     ".cm-scroller": { overflow: "auto" },
   },
-  { dark: true }
+  { dark: false }
 );
 
 const cfHighlight = HighlightStyle.define([
-  { tag: tags.keyword, color: "#7aa2c5" },
-  { tag: [tags.controlKeyword, tags.operatorKeyword], color: "#7aa2c5" },
-  { tag: tags.string, color: "#9aba9a" },
-  { tag: [tags.number, tags.bool, tags.null], color: "#c8b88a" },
-  { tag: tags.comment, color: "#5c5c66", fontStyle: "italic" },
-  { tag: tags.function(tags.variableName), color: "#c9b896" },
-  { tag: tags.typeName, color: "#9a8fb5" },
-  { tag: tags.definition(tags.variableName), color: "#a0a0a8" },
-  { tag: tags.operator, color: "#8b8b94" },
-  { tag: tags.className, color: "#9a8fb5" },
-  { tag: tags.propertyName, color: "#b0b0b8" },
-  { tag: tags.variableName, color: "#d4d4d8" },
+  { tag: tags.keyword, color: "#1d4ed8" },
+  { tag: [tags.controlKeyword, tags.operatorKeyword], color: "#1d4ed8" },
+  { tag: tags.string, color: "#15803d" },
+  { tag: [tags.number, tags.bool, tags.null], color: "#b45309" },
+  { tag: tags.comment, color: "#8b8b94", fontStyle: "italic" },
+  { tag: tags.function(tags.variableName), color: "#7c3aed" },
+  { tag: tags.typeName, color: "#0e7490" },
+  { tag: tags.definition(tags.variableName), color: "#3f3f46" },
+  { tag: tags.operator, color: "#5c5c66" },
+  { tag: tags.className, color: "#0e7490" },
+  { tag: tags.propertyName, color: "#3f3f46" },
+  { tag: tags.variableName, color: "#1a1a1e" },
 ]);
 
 interface Props {

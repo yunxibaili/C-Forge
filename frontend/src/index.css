@@ -1,18 +1,18 @@
 :root {
-  --bg0: #0a0a0c;
-  --bg1: #0e0e11;
-  --bg2: #121216;
-  --bg3: #16161b;
-  --line: rgba(255, 255, 255, 0.07);
-  --line2: rgba(255, 255, 255, 0.12);
-  --fg: #d4d4d8;
-  --fg2: #8b8b94;
-  --fg3: #5c5c66;
-  --cyan: #67e8f9;
-  --cyan-dim: #22d3ee;
-  --amber: #fbbf24;
-  --violet: #a78bfa;
-  --red: #f87171;
+  --bg0: #f6f6f8;
+  --bg1: #ffffff;
+  --bg2: #ffffff;
+  --bg3: #ececf0;
+  --line: rgba(0, 0, 0, 0.08);
+  --line2: rgba(0, 0, 0, 0.14);
+  --fg: #1a1a1e;
+  --fg2: #5c5c66;
+  --fg3: #8b8b94;
+  --cyan: #0e7490;
+  --cyan-dim: #0891b2;
+  --amber: #b45309;
+  --violet: #6d28d9;
+  --red: #dc2626;
   --mono: "Cascadia Code", "Fira Code", Consolas, "SF Mono", monospace;
 }
 
@@ -40,8 +40,8 @@ button:disabled { opacity: 0.3; cursor: default; }
 
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #2a2a30; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #3a3a42; }
+::-webkit-scrollbar-thumb { background: #c8c8d0; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #a8a8b4; }
 
 /* ---- CodeMirror theme ---- */
 .cm-editor {
@@ -57,28 +57,28 @@ button:disabled { opacity: 0.3; cursor: default; }
 }
 .cm-editor .cm-gutters {
   background: transparent;
-  color: #3a3a44;
+  color: #a0a0aa;
   border: none;
   border-right: 1px solid var(--line);
 }
 .cm-editor .cm-lineNumbers .cm-gutterElement { padding: 0 12px 0 16px; }
-.cm-editor .cm-activeLine { background: rgba(255, 255, 255, 0.02); }
+.cm-editor .cm-activeLine { background: rgba(0, 0, 0, 0.03); }
 .cm-editor .cm-activeLineGutter { background: transparent; color: var(--fg2); }
 .cm-editor.cm-focused { outline: none; }
 .cm-editor .cm-selectionBackground,
 .cm-editor.cm-focused .cm-selectionBackground,
 .cm-editor .cm-content ::selection {
-  background: rgba(103, 232, 249, 0.15) !important;
+  background: rgba(8, 145, 178, 0.18) !important;
 }
 .cm-editor .cm-cursor { border-left-color: var(--cyan); }
 
 /* execution line: thin left indicator + faint tint */
 .cm-cf-line {
-  background: rgba(103, 232, 249, 0.05) !important;
+  background: rgba(8, 145, 178, 0.08) !important;
   box-shadow: inset 2px 0 0 var(--cyan-dim) !important;
 }
 /* compile-error line */
 .cm-cf-err {
-  background: rgba(248, 113, 113, 0.06) !important;
-  box-shadow: inset 2px 0 0 rgba(248, 113, 113, 0.6) !important;
+  background: rgba(220, 38, 38, 0.08) !important;
+  box-shadow: inset 2px 0 0 rgba(220, 38, 38, 0.65) !important;
 }

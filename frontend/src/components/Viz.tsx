@@ -182,7 +182,7 @@ function PointerMap({
   const arrows = ev.pointers
     .map((p, i) => {
       if (p.null || !p.target || !(p.target in slot)) return null;
-      const color = ev.event === "write" && p.name === "p" ? "#fbbf24" : "#22d3ee";
+      const color = ev.event === "write" && p.name === "p" ? "#b45309" : "#0e7490";
       return {
         id: p.name,
         y1: centerY(slot[p.name]),
@@ -214,7 +214,7 @@ function PointerMap({
     >
       <defs>
         <marker id="ah" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
-          <path d="M0,0 L7,3.5 L0,7 z" fill="#22d3ee" />
+          <path d="M0,0 L7,3.5 L0,7 z" fill="#0e7490" />
         </marker>
       </defs>
       {arrows.map((a) => (
@@ -254,7 +254,7 @@ function PointerMap({
               ) : null}
             </text>
             {b.kind === "ptr" && (
-              <circle cx={BOX_W} cy={(ROW_H - 14) / 2} r={3} fill="#22d3ee" />
+              <circle cx={BOX_W} cy={(ROW_H - 14) / 2} r={3} fill="#0e7490" />
             )}
           </g>
         );
@@ -357,7 +357,7 @@ function LinkedListView({ ev, prev }: { ev: TraceEvent; prev: TraceEvent | null 
     >
       <defs>
         <marker id="llh" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
-          <path d="M0,0 L7,3.5 L0,7 z" fill="#22d3ee" />
+          <path d="M0,0 L7,3.5 L0,7 z" fill="#0e7490" />
         </marker>
       </defs>
       <text x={4} y={14} className={styles.headLabel}>HEAD</text>
@@ -383,7 +383,7 @@ function LinkedListView({ ev, prev }: { ev: TraceEvent; prev: TraceEvent | null 
             <text x={NODE_W / 2} y={NODE_H - 4} textAnchor="middle" className={styles.nodeAddr}>
               {n.addr.slice(0, 10)}
             </text>
-            <circle cx={NODE_W} cy={NODE_H / 2} r={3} fill="#22d3ee" />
+            <circle cx={NODE_W} cy={NODE_H / 2} r={3} fill="#0e7490" />
           </g>
         );
       })}

@@ -3,16 +3,16 @@ import type { TraceEvent } from "../types";
 import styles from "./Timeline.module.css";
 
 const EVENT_COLORS: Record<string, string> = {
-  start: "#3a3a44",
-  step: "#4a4a55",
-  write: "#67e8f9",
-  array_write: "#67e8f9",
-  swap: "#fbbf24",
-  swap_step: "#d97706",
-  compare: "#fbbf24",
-  pointer_move: "#22d3ee",
-  call: "#8b93c7",
-  return: "#6b7394",
+  start: "#9a9aa4",
+  step: "#6b6b74",
+  write: "#0891b2",
+  array_write: "#0891b2",
+  swap: "#d97706",
+  swap_step: "#b45309",
+  compare: "#d97706",
+  pointer_move: "#0e7490",
+  call: "#4f46e5",
+  return: "#6366f1",
 };
 
 interface Props {
@@ -85,7 +85,7 @@ export default function Timeline({
                 className={i === index ? `${styles.tick} ${styles.tickActive}` : styles.tick}
                 style={{
                   left: `${total > 1 ? (i / (total - 1)) * 100 : 0}%`,
-                  background: i === index ? "#e4e4e8" : EVENT_COLORS[e.event] || "#3a3a44",
+                  background: i === index ? "#ffffff" : EVENT_COLORS[e.event] || "#9a9aa4",
                 }}
               />
             ))}

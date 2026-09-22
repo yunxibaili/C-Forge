@@ -43,8 +43,8 @@
 }
 .idleBtn:hover {
   color: var(--cyan);
-  border-color: rgba(103, 232, 249, 0.4);
-  background: rgba(103, 232, 249, 0.06);
+  border-color: rgba(8, 145, 178, 0.45);
+  background: rgba(8, 145, 178, 0.08);
 }
 .idleHint {
   margin-top: 4px;
@@ -82,7 +82,7 @@
   font-size: 10px;
   letter-spacing: 1.5px;
   color: var(--cyan);
-  border: 1px solid rgba(103, 232, 249, 0.35);
+  border: 1px solid rgba(8, 145, 178, 0.4);
   padding: 2px 8px;
   border-radius: 3px;
 }
@@ -124,11 +124,11 @@
   stroke-width: 1;
   rx: 4;
 }
-.boxPtr { stroke: rgba(103, 232, 249, 0.55); }
-.boxArr { stroke: rgba(103, 232, 249, 0.3); }
+.boxPtr { stroke: rgba(8, 145, 178, 0.7); }
+.boxArr { stroke: rgba(8, 145, 178, 0.4); }
 .boxFlash { stroke: var(--cyan) !important; stroke-width: 1.5; animation: boxFlash 0.6s ease-out; }
 @keyframes boxFlash {
-  0% { filter: brightness(2); }
+  0% { filter: brightness(1.35); }
   100% { filter: brightness(1); }
 }
 .boxName { fill: var(--fg); font-size: 13px; font-family: var(--mono); font-weight: 600; }
@@ -189,7 +189,7 @@
 /* compare: amber flash */
 .cellCmp {
   border-color: var(--amber) !important;
-  background: rgba(251, 191, 36, 0.1) !important;
+  background: rgba(180, 83, 9, 0.12) !important;
   z-index: 1;
 }
 .cellCmp .cellVal { color: var(--amber); }
@@ -197,7 +197,7 @@
 /* swap: lift + cross animation */
 .cellSwap {
   border-color: var(--cyan) !important;
-  background: rgba(103, 232, 249, 0.08) !important;
+  background: rgba(8, 145, 178, 0.1) !important;
   z-index: 2;
   animation: cellLift 0.55s cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -208,9 +208,9 @@
 }
 
 @keyframes cellLift {
-  0%   { transform: translateY(0); box-shadow: 0 0 0 rgba(103,232,249,0); }
-  40%  { transform: translateY(-10px); box-shadow: 0 8px 24px rgba(103,232,249,0.15); }
-  100% { transform: translateY(0); box-shadow: 0 0 0 rgba(103,232,249,0); }
+  0%   { transform: translateY(0); box-shadow: 0 0 0 rgba(8,145,178,0); }
+  40%  { transform: translateY(-10px); box-shadow: 0 8px 24px rgba(8,145,178,0.2); }
+  100% { transform: translateY(0); box-shadow: 0 0 0 rgba(8,145,178,0); }
 }
 
 @keyframes cellSwapIn {
@@ -222,11 +222,11 @@
 /* write: bright cyan pop */
 .cellWrite {
   border-color: var(--cyan) !important;
-  background: rgba(103, 232, 249, 0.07) !important;
+  background: rgba(8, 145, 178, 0.1) !important;
   animation: cellWrite 0.5s ease-out;
 }
 @keyframes cellWrite {
-  0%   { filter: brightness(1.8); transform: scale(1.05); }
+  0%   { filter: brightness(1.15); transform: scale(1.05); }
   100% { filter: brightness(1); transform: scale(1); }
 }
 
@@ -247,7 +247,7 @@
   rx: 4;
 }
 .nodeRectCur { stroke: var(--cyan); stroke-width: 1.5; }
-.nodeCur { filter: drop-shadow(0 0 6px rgba(103, 232, 249, 0.35)); }
+.nodeCur { filter: drop-shadow(0 0 6px rgba(8, 145, 178, 0.4)); }
 .nodeLabel { fill: var(--fg); font-size: 16px; font-weight: 700; font-family: var(--mono); }
 .nodeAddr { fill: var(--fg3); font-size: 9px; font-family: var(--mono); }
 .headLabel { fill: var(--fg3); font-size: 10px; font-family: var(--mono); letter-spacing: 1px; }
