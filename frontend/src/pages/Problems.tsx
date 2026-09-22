@@ -1,14 +1,22 @@
 import { useMemo, useState } from "react";
-import { DIFFICULTIES, PROBLEMS, SOURCES, TOPICS } from "../problems";
+import {
+  DIFFICULTIES,
+  PROBLEMS,
+  SOURCES,
+  TOPICS,
+  type Difficulty,
+  type SourceId,
+  type Topic,
+} from "../problems";
 import { navigate } from "../router";
 import { Shell } from "./Home";
 import styles from "./pages.module.css";
 
 export default function Problems() {
   const [q, setQ] = useState("");
-  const [source, setSource] = useState("");
-  const [topic, setTopic] = useState("");
-  const [difficulty, setDifficulty] = useState("");
+  const [source, setSource] = useState<SourceId | "">("");
+  const [topic, setTopic] = useState<Topic | "">("");
+  const [difficulty, setDifficulty] = useState<Difficulty | "">("");
 
   const list = useMemo(() => {
     const key = q.trim().toLowerCase();
@@ -76,8 +84,8 @@ export default function Problems() {
               />
               <select
                 className={styles.select}
-                value={difficulty}
-                onChange={(e) => setDifficulty(e.target.value)}
+value={difficulty}
+              onChange={(e) => setDifficulty(e.target.value as Difficulty | "")}
                 aria-label="Difficulty"
               >
                 <option value="">Difficulty</option>

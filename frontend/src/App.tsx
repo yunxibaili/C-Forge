@@ -31,5 +31,5 @@ export default function App() {
   if (route.name === "playground") return <PlaygroundPage />;
   if (route.name === "problems") return <Problems />;
   if (route.name === "problem") return <ProblemDetail route={route} />;
-  return <Home route={route} />;
+  return <Home />;
 }

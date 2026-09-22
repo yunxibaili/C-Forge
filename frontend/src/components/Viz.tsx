@@ -390,7 +390,7 @@ function LinkedListView({ ev, prev }: { ev: TraceEvent; prev: TraceEvent | null 
         );
       })}
       {/* arrows between nodes — keyed by pair so insert triggers draw-in */}
-      {primary.nodes.slice(0, -1).map((n, i) => {
+      {primary.nodes.slice(0, -1).map((_, i) => {
         const x1 = 4 + i * (NODE_W + NODE_GAP) + NODE_W;
         const y = 24 + NODE_H / 2;
         const key = `${primary.nodes[i].addr}->${primary.nodes[i + 1].addr}`;

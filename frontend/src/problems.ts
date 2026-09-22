@@ -2,28 +2,7 @@ import { EXAMPLES } from "./examples";
 
 export type Difficulty = "easy" | "medium" | "hard";
 
-export interface Problem {
-  id: string;
-  source: string;
-  sourceId: string;
-  title: string;
-  difficulty: Difficulty;
-  topics: string[];
-  url: string;
-  language: string[];
-  mode: "TRACE";
-  description: string;
-  code: string;
-}
-
-const byExample = (id: string): string => {
-  const ex = EXAMPLES.find((e) => e.id === id);
-  if (!ex) throw new Error("missing example " + id);
-  return ex.code;
-};
-
 export const TOPICS = [
-  "专升本",
   "C Basics",
   "Array",
   "Pointer",
@@ -37,65 +16,74 @@ export const TOPICS = [
   "Sort",
 ] as const;
 
+export type Topic = (typeof TOPICS)[number];
+
 export const SOURCES = [
   { id: "rookie", label: "Rookie" },
-  { id: "zhuanshengben", label: "专升本" },
+  { id: "fundamentals", label: "Fundamentals" },
   { id: "pta", label: "PTA" },
   { id: "self", label: "C-Forge" },
 ] as const;
+
+export type SourceId = (typeof SOURCES)[number]["id"];
+
+export interface Problem {
+  id: string;
+  source: SourceId;
+  title: string;
+  difficulty: Difficulty;
+  topics: Topic[];
+  url: string;
+  description: string;
+  code: string;
+}
+
+const byExample = (id: string): string => {
+  const ex = EXAMPLES.find((e) => e.id === id);
+  if (!ex) throw new Error("missing example " + id);
+  return ex.code;
+};
 
 export const DIFFICULTIES: readonly Difficulty[] = ["easy", "medium", "hard"];
 
 export const PROBLEMS: Problem[] = [
   {
     id: "cf-vars-001",
-    source: "zhuanshengben",
-    sourceId: "gd-01",
+    source: "fundamentals",
     title: "Variables & Assignment",
     difficulty: "easy",
-    topics: ["专升本", "C Basics"],
+    topics: ["C Basics"],
     url: "",
-    language: ["c"],
-    mode: "TRACE",
     description: "Declare integers, compute a sum, and watch local variable writes step by step.",
     code: byExample("vars"),
   },
   {
     id: "cf-ptr-001",
-    source: "zhuanshengben",
-    sourceId: "gd-02",
+    source: "fundamentals",
     title: "Pointer Basic",
     difficulty: "easy",
-    topics: ["专升本", "Pointer", "C Basics"],
+    topics: ["Pointer", "C Basics"],
     url: "",
-    language: ["c"],
-    mode: "TRACE",
     description: "Take an address, store it in a pointer, and write through the pointer.",
     code: byExample("pointers"),
   },
   {
     id: "cf-arr-001",
-    source: "zhuanshengben",
-    sourceId: "gd-03",
+    source: "fundamentals",
     title: "Array & Pointer Arithmetic",
     difficulty: "easy",
-    topics: ["专升本", "Array", "Pointer"],
+    topics: ["Array", "Pointer"],
     url: "",
-    language: ["c"],
-    mode: "TRACE",
     description: "Index an array, advance a pointer, and update elements in a loop.",
     code: byExample("array"),
   },
   {
     id: "cf-fn-001",
-    source: "zhuanshengben",
-    sourceId: "gd-04",
+    source: "fundamentals",
     title: "Function Call & Return",
     difficulty: "easy",
-    topics: ["专升本", "Function"],
+    topics: ["Function"],
     url: "",
-    language: ["c"],
-    mode: "TRACE",
     description: "Call a simple add function and observe parameters, locals, and return.",
     code: `#include <stdio.h>
 
@@ -115,14 +103,11 @@ int main(void) {
   },
   {
     id: "cf-struct-001",
-    source: "zhuanshengben",
-    sourceId: "gd-05",
+    source: "fundamentals",
     title: "Struct Field Access",
     difficulty: "easy",
-    topics: ["专升本", "Struct"],
+    topics: ["Struct"],
     url: "",
-    language: ["c"],
-    mode: "TRACE",
     description: "Initialize a struct, read and write its fields, and print the result.",
     code: `#include <stdio.h>
 
@@ -144,26 +129,20 @@ int main(void) {
   {
     id: "cf-list-001",
     source: "self",
-    sourceId: "ds-01",
     title: "Linked List Insert",
     difficulty: "medium",
     topics: ["Linked List", "Pointer"],
     url: "",
-    language: ["c"],
-    mode: "TRACE",
     description: "Build a singly linked list with push_front and insert_after; watch heap nodes and next pointers.",
     code: byExample("list"),
   },
   {
     id: "cf-stack-001",
     source: "self",
-    sourceId: "ds-02",
     title: "Array Stack Push/Pop",
     difficulty: "easy",
     topics: ["Stack", "Array"],
     url: "",
-    language: ["c"],
-    mode: "TRACE",
     description: "Implement a fixed array stack with push and pop; step through top and element writes.",
     code: `#include <stdio.h>
 
@@ -199,13 +178,10 @@ int main(void) {
   {
     id: "cf-queue-001",
     source: "self",
-    sourceId: "ds-03",
     title: "Array Queue Enqueue/Dequeue",
     difficulty: "easy",
     topics: ["Queue", "Array"],
     url: "",
-    language: ["c"],
-    mode: "TRACE",
     description: "Circular-friendly array queue with enqueue and dequeue; watch front/rear indices.",
     code: `#include <stdio.h>
 
@@ -239,27 +215,21 @@ int main(void) {
   },
   {
     id: "cf-sort-001",
-    source: "zhuanshengben",
-    sourceId: "algo-01",
+    source: "fundamentals",
     title: "Bubble Sort",
     difficulty: "easy",
     topics: ["Sort", "Array"],
     url: "",
-    language: ["c"],
-    mode: "TRACE",
     description: "Classic bubble sort with compare and swap animations on an integer array.",
     code: byExample("bubble"),
   },
   {
     id: "cf-search-001",
     source: "pta",
-    sourceId: "algo-bs",
     title: "Binary Search",
     difficulty: "easy",
     topics: ["Search", "Array"],
     url: "https://pintia.cn/",
-    language: ["c"],
-    mode: "TRACE",
     description: "Search a sorted array by halving the range; step through mid comparisons.",
     code: `#include <stdio.h>
 
@@ -288,13 +258,10 @@ int main(void) {
   {
     id: "cf-tree-001",
     source: "self",
-    sourceId: "ds-04",
     title: "Binary Tree Inorder Walk",
     difficulty: "medium",
     topics: ["Tree", "Pointer", "Function"],
     url: "",
-    language: ["c"],
-    mode: "TRACE",
     description: "Build a small binary tree with heap nodes and walk it in-order (stack frames + pointers).",
     code: `#include <stdio.h>
 #include <stdlib.h>
@@ -334,14 +301,11 @@ int main(void) {
   },
   {
     id: "cf-rec-001",
-    source: "zhuanshengben",
-    sourceId: "gd-06",
+    source: "fundamentals",
     title: "Recursion Factorial",
     difficulty: "easy",
-    topics: ["Function", "专升本"],
+    topics: ["Function"],
     url: "",
-    language: ["c"],
-    mode: "TRACE",
     description: "Compute 4! recursively; watch stack frames push and pop with each call/return.",
     code: byExample("recursion"),
   },

@@ -18,7 +18,6 @@ const EVENT_COLORS: Record<string, string> = {
 interface Props {
   total: number;
   index: number;
-  event: TraceEvent | null;
   events: TraceEvent[];
   playing: boolean;
   onScrub: (i: number) => void;
@@ -38,7 +37,6 @@ function tipFor(ev: TraceEvent | null, idx: number): string {
 export default function Timeline({
   total,
   index,
-  event,
   events,
   playing,
   onScrub,

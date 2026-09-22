@@ -17,19 +17,16 @@ export interface WorkbenchProps {
   initialCode?: string;
   showExamples?: boolean;
   codeLabel?: string;
-  extraHeader?: React.ReactNode;
-  readOnly?: boolean;
+  onCodeChange?: (code: string) => void;
 }
 
 export default function Workbench({
   initialCode,
   showExamples = true,
   codeLabel = "main.c",
-  extraHeader,
-  readOnly = false,
+  onCodeChange,
 }: WorkbenchProps) {
   const [code, setCode] = useState(initialCode ?? EXAMPLES[0].code);
-  const [exampleId, setExampleId] = useState(EXAMPLES[0].id);
   const [result, setResult] = useState<RunResult | null>(null);
   const [index, setIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
@@ -37,26 +34,12 @@ export default function Workbench({
   const [error, setError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
-  const seeded = useRef(false);
+  const onCodeChangeRef = useRef(onCodeChange);
+  onCodeChangeRef.current = onCodeChange;
 
   useEffect(() => {
-    if (initialCode !== undefined && !seeded.current) {
-      seeded.current = true;
-      if (initialCode !== code) setCode(initialCode);
-    }
-  }, [initialCode, code]);
-
-  useEffect(() => {
-    if (initialCode === undefined) return;
-    if (initialCode !== code && seeded.current) {
-      setCode(initialCode);
-      setResult(null);
-      setError(null);
-      setIndex(0);
-      setPlaying(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialCode]);
+    onCodeChangeRef.current?.(code);
+  }, [code]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -70,6 +53,7 @@ export default function Workbench({
   const events = result?.events ?? [];
   const current = events.length ? events[Math.min(index, events.length - 1)] : null;
   const errorLine = parseErrorLine(error);
+  const activeExampleId = EXAMPLES.find((e) => e.code === code)?.id ?? null;
 
   const doRun = useCallback(async () => {
     setBusy(true);
@@ -131,7 +115,6 @@ export default function Workbench({
   const loadExample = (id: string) => {
     const ex = EXAMPLES.find((e) => e.id === id);
     if (!ex) return;
-    setExampleId(id);
     setCode(ex.code);
     setResult(null);
     setError(null);
@@ -229,7 +212,6 @@ export default function Workbench({
         }}
       >
         <div style={{ flex: 1 }} />
-        {extraHeader}
         {controls}
       </header>
 
@@ -246,7 +228,7 @@ export default function Workbench({
                     {EXAMPLES.map((ex) => (
                       <button
                         key={ex.id}
-                        className={`${styles.exItem}${ex.id === exampleId ? " " + styles.exItemActive : ""}`}
+                        className={`${styles.exItem}${ex.id === activeExampleId ? " " + styles.exItemActive : ""}`}
                         onClick={() => loadExample(ex.id)}
                       >
                         {ex.name}
@@ -263,7 +245,7 @@ export default function Workbench({
           <div className={styles.editorHost}>
             <Editor
               code={code}
-              onChange={readOnly ? () => {} : setCode}
+              onChange={setCode}
               activeLine={current?.line ?? 0}
               errorLine={errorLine}
             />
@@ -341,7 +323,6 @@ export default function Workbench({
       <Timeline
         total={events.length}
         index={index}
-        event={current}
         events={events}
         playing={playing}
         onScrub={scrub}

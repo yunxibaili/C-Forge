@@ -1,4 +1,4 @@
-import { navigate, type Route } from "../router";
+import { navigate } from "../router";
 import styles from "./pages.module.css";
 
 export function Shell({
@@ -49,7 +49,7 @@ export function Shell({
   );
 }
 
-export default function Home(_props: { route: Route }) {
+export default function Home() {
   return (
     <Shell>
       <div className={styles.homeBody}>

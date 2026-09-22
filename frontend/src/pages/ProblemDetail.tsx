@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import Workbench from "../components/Workbench";
 import { getProblem, SOURCES } from "../problems";
 import { navigate, type Route } from "../router";
@@ -7,6 +8,7 @@ import styles from "./pages.module.css";
 
 export default function ProblemDetail({ route }: { route: Extract<Route, { name: "problem" }> }) {
   const problem = getProblem(route.id);
+  const codeRef = useRef<string | null>(null);
 
   if (!problem) {
     return (
@@ -30,7 +32,7 @@ export default function ProblemDetail({ route }: { route: Extract<Route, { name:
   const src = SOURCES.find((s) => s.id === problem.source);
 
   const openInPlayground = () => {
-    setPlaygroundSeed(problem.code);
+    setPlaygroundSeed(codeRef.current ?? problem.code);
     navigate("/playground");
   };
 
@@ -116,6 +118,9 @@ export default function ProblemDetail({ route }: { route: Extract<Route, { name:
             initialCode={problem.code}
             showExamples={false}
             codeLabel="reference.c"
+            onCodeChange={(c) => {
+              codeRef.current = c;
+            }}
           />
         </div>
       </div>
