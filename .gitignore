@@ -10,3 +10,6 @@ _dbg/
 _vite.log
 .playwright-mcp/
 frontend/dist/
+*.png
+*.jpg
+*.jpeg
