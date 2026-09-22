@@ -8,6 +8,18 @@ import type {
   VarMeta,
 } from "../types";
 import { buildFrames, splitVars } from "../frames";
+import {
+  buildTraceState,
+  detectAlgorithmKind,
+  summarizeAlgorithmEvents,
+  toAlgorithmEvents,
+} from "../algorithmEvents";
+import {
+  BinarySearchView,
+  ComplexityBar,
+  QueueView,
+  StackView,
+} from "./AlgorithmViews";
 import styles from "./Viz.module.css";
 
 /* ---------- helpers ---------- */
@@ -542,6 +554,14 @@ export default function Viz({ result, index }: { result: RunResult | null; index
   const { order, slot } = useMemo(() => buildSlots(events, i), [events, i]);
   const ft = useMemo(() => buildFrames(events, i), [events, i]);
   const ftPrev = useMemo(() => buildFrames(events, Math.max(0, i - 1)), [events, i]);
+  const algoKind = useMemo(() => detectAlgorithmKind(events), [events]);
+  const traceState = useMemo(() => buildTraceState(events), [events]);
+  const algoEvents = useMemo(() => toAlgorithmEvents(events), [events]);
+  const algoStats = useMemo(() => summarizeAlgorithmEvents(algoEvents), [algoEvents]);
+  const activeAlgo = useMemo(
+    () => algoEvents.find((a) => a.step === (ev?.step ?? -1)) ?? null,
+    [algoEvents, ev]
+  );
 
   if (!ev || !result) {
     return (
@@ -560,15 +580,44 @@ export default function Viz({ result, index }: { result: RunResult | null; index
   const isLast = i >= events.length - 1;
   const showSorted = isLast && st.swaps > 0;
 
+  const arr0 = traceState.arrays[i] ?? ev.arrays[0] ?? null;
+  const topVal = traceState.tops[i];
+  const frontVal = traceState.fronts[i];
+  const rearVal = traceState.rears[i];
+  const lowVal = traceState.lows[i];
+  const highVal = traceState.highs[i];
+  const midVal = traceState.mids[i];
+
+  const showStack = algoKind === "stack" && arr0 && typeof topVal === "number";
+  const showQueue =
+    algoKind === "queue" && arr0 && typeof frontVal === "number" && typeof rearVal === "number";
+  const showSearch =
+    algoKind === "binary_search" && arr0 && typeof lowVal === "number" && typeof highVal === "number";
+
   const hasPointerView =
     (ev.pointers.length > 0 || Object.keys(ev.variables).length > 0) && ev.linked_lists.length === 0;
   const hasArray = ev.arrays.length > 0;
   const hasList = ev.linked_lists.length > 0;
-  const hasStack =
+  const hasStackFrames =
     ft.frames.length > 0 &&
     (ft.maxDepth > 1 || ft.frames.length > 1 || ft.lastTransition !== "none");
 
-  const sections = [hasPointerView, hasArray, hasList, hasStack].filter(Boolean).length;
+  const showDedicatedAlgo = Boolean(showStack || showQueue || showSearch);
+  const sections = [
+    hasStackFrames,
+    showDedicatedAlgo || hasPointerView,
+    hasArray && !showDedicatedAlgo,
+    hasList,
+  ].filter(Boolean).length;
+
+  const showComplexity =
+    algoStats.comparisons > 0 ||
+    algoStats.swaps > 0 ||
+    algoStats.writes > 0 ||
+    algoStats.pushes > 0 ||
+    algoStats.pops > 0 ||
+    algoStats.enqueues > 0 ||
+    algoStats.dequeues > 0;
 
   return (
     <div className={styles.wrap}>
@@ -576,8 +625,11 @@ export default function Viz({ result, index }: { result: RunResult | null; index
         <span className={styles.vizLabel}>visualization</span>
         <span className={styles.vizMeta}>
           <span>{ev.function} · L{ev.line}</span>
-          <span className={styles.statC}>COMPARE {st.comparisons}</span>
-          <span className={styles.statS}>SWAP {st.swaps}</span>
+          {st.comparisons > 0 && <span className={styles.statC}>COMPARE {st.comparisons}</span>}
+          {st.swaps > 0 && <span className={styles.statS}>SWAP {st.swaps}</span>}
+          {activeAlgo && activeAlgo.type !== "range" && (
+            <span className={styles.statC}>{activeAlgo.type.toUpperCase()}</span>
+          )}
           {ft.frames.length > 1 && (
             <span className={styles.stackDepthTag}>stack {ft.frames.length}</span>
           )}
@@ -590,7 +642,7 @@ export default function Viz({ result, index }: { result: RunResult | null; index
       </div>
 
       <div className={styles.stage}>
-        {hasStack && (
+        {hasStackFrames && (
           <div className={styles.stageBlock}>
             <span className={styles.stageTag}>
               call stack · {ft.frames.length} frame{ft.frames.length === 1 ? "" : "s"}
@@ -606,13 +658,49 @@ export default function Viz({ result, index }: { result: RunResult | null; index
             />
           </div>
         )}
-        {hasPointerView && (
+        {showStack && arr0 && typeof topVal === "number" && (
+          <div className={styles.stageBlock}>
+            <span className={styles.stageTag}>algorithm · stack (push / pop)</span>
+            <StackView
+              name={arr0.name}
+              elems={arr0.elems}
+              top={topVal}
+              activeEvent={activeAlgo}
+            />
+          </div>
+        )}
+        {showQueue && arr0 && typeof frontVal === "number" && typeof rearVal === "number" && (
+          <div className={styles.stageBlock}>
+            <span className={styles.stageTag}>algorithm · queue (enqueue / dequeue)</span>
+            <QueueView
+              name={arr0.name}
+              elems={arr0.elems}
+              front={frontVal}
+              rear={rearVal}
+              activeEvent={activeAlgo}
+            />
+          </div>
+        )}
+        {showSearch && arr0 && typeof lowVal === "number" && typeof highVal === "number" && (
+          <div className={styles.stageBlock}>
+            <span className={styles.stageTag}>algorithm · binary search (low / mid / high)</span>
+            <BinarySearchView
+              name={arr0.name}
+              elems={arr0.elems}
+              low={lowVal}
+              mid={typeof midVal === "number" ? midVal : Math.floor((lowVal + highVal) / 2)}
+              high={highVal}
+              activeEvent={activeAlgo}
+            />
+          </div>
+        )}
+        {!showDedicatedAlgo && hasPointerView && (
           <div className={styles.stageBlock}>
             <span className={styles.stageTag}>memory · pointers</span>
             <PointerMap ev={ev} prev={prev} order={order} slot={slot} />
           </div>
         )}
-        {hasArray && (
+        {hasArray && !showDedicatedAlgo && (
           <div className={styles.stageBlock}>
             <span className={styles.stageTag}>array · memory cells</span>
             <ArrayStrip ev={ev} prev={prev} />
@@ -626,7 +714,13 @@ export default function Viz({ result, index }: { result: RunResult | null; index
             <LinkedListView ev={ev} prev={prev} />
           </div>
         )}
-        {sections === 0 && (
+        {showComplexity && (
+          <div className={styles.stageBlock}>
+            <span className={styles.stageTag}>complexity · real run stats</span>
+            <ComplexityBar stats={algoStats} />
+          </div>
+        )}
+        {sections === 0 && !showComplexity && (
           <div style={{ color: "var(--fg3)", fontFamily: "var(--mono)", fontSize: 13 }}>
             no visualization data for this step
           </div>

@@ -137,4 +137,99 @@ int main(void) {
 }
 `,
   },
+  {
+    id: "stack",
+    name: "Stack",
+    code: `#include <stdio.h>
+
+#define CAP 8
+
+int push(int *st, int *top, int v) {
+    if (*top >= CAP) return -1;
+    st[*top] = v;
+    *top = *top + 1;
+    return 0;
+}
+
+int pop(int *st, int *top) {
+    if (*top <= 0) return -1;
+    *top = *top - 1;
+    return st[*top];
+}
+
+int main(void) {
+    int st[CAP];
+    int top = 0;
+    push(st, &top, 10);
+    push(st, &top, 20);
+    push(st, &top, 30);
+    int v = pop(st, &top);
+    printf("pop=%d top=%d\\n", v, top);
+    v = pop(st, &top);
+    printf("pop=%d top=%d\\n", v, top);
+    v = st[top - 1];
+    printf("peek=%d top=%d\\n", v, top);
+    return 0;
+}
+`,
+  },
+  {
+    id: "queue",
+    name: "Queue",
+    code: `#include <stdio.h>
+
+#define CAP 8
+
+void enqueue(int *q, int *rear, int v) {
+    q[*rear] = v;
+    *rear = (*rear + 1) % CAP;
+}
+
+int dequeue(int *q, int *front, int *rear) {
+    if (*front == *rear) return -1;
+    int v = q[*front];
+    *front = (*front + 1) % CAP;
+    return v;
+}
+
+int main(void) {
+    int q[CAP];
+    int front = 0, rear = 0;
+    enqueue(q, &rear, 11);
+    enqueue(q, &rear, 22);
+    enqueue(q, &rear, 33);
+    int v = dequeue(q, &front, &rear);
+    printf("deq=%d front=%d rear=%d\\n", v, front, rear);
+    v = dequeue(q, &front, &rear);
+    printf("deq=%d front=%d rear=%d\\n", v, front, rear);
+    printf("front_val=%d\\n", q[front]);
+    return 0;
+}
+`,
+  },
+  {
+    id: "bsearch",
+    name: "Binary Search",
+    code: `#include <stdio.h>
+
+int bsearch_int(int *a, int n, int key) {
+    int lo = 0;
+    int hi = n - 1;
+    while (lo <= hi) {
+        int mid = (lo + hi) / 2;
+        if (a[mid] == key) return mid;
+        if (a[mid] < key) lo = mid + 1;
+        else hi = mid - 1;
+    }
+    return -1;
+}
+
+int main(void) {
+    int a[8] = {1, 3, 5, 7, 9, 11, 13, 15};
+    int idx = bsearch_int(a, 8, 11);
+    printf("idx=%d\\n", idx);
+    return 0;
+}
+`,
+  },
 ];

@@ -83,8 +83,15 @@ button:disabled { opacity: 0.3; cursor: default; }
   box-shadow: inset 2px 0 0 rgba(220, 38, 38, 0.65) !important;
 }
 
-/* Mobile / short landscape: allow vertical page scroll */
-@media (max-width: 800px), (max-height: 500px) {
+/* stack push enter (referenced by AlgorithmViews inline style) */
+@keyframes cfPushIn {
+  0% { opacity: 0; transform: translateY(14px) scale(0.92); }
+  60% { opacity: 1; transform: translateY(-4px) scale(1.03); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* <700: allow vertical page scroll for stacked layout */
+@media (max-width: 699px) {
   html,
   body,
   #root {

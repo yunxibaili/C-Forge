@@ -27,11 +27,11 @@ export default function Problems() {
   const [difficulty, setDifficulty] = useState<Difficulty | "">("");
   const [exam, setExam] = useState<ExamRelevance | "">("");
   const [sideOpen, setSideOpen] = useState(
-    () => typeof window === "undefined" || !window.matchMedia("(max-width: 900px)").matches
+    () => typeof window === "undefined" || !window.matchMedia("(max-width: 899px)").matches
   );
 
   useEffect(() => {
-    const mq = window.matchMedia("(max-width: 900px)");
+    const mq = window.matchMedia("(max-width: 899px)");
     const onChange = () => {
       if (!mq.matches) setSideOpen(true);
     };

@@ -170,8 +170,23 @@
   .inspector { grid-template-columns: 1.2fr 1fr 1fr; }
 }
 
-/* Mobile / short landscape: stack Code → Viz → Inspector → Timeline */
-@media (max-width: 800px), (max-height: 500px) {
+/* 700–899: keep side-by-side, slightly narrower code pane */
+@media (max-width: 899px) {
+  .main {
+    grid-template-columns: clamp(240px, 34vw, 320px) 1fr;
+  }
+  .inspector {
+    grid-template-columns: 1fr 1fr;
+  }
+  .insCol:last-child {
+    grid-column: 1 / -1;
+    border-left: none;
+    border-top: 1px solid var(--line);
+  }
+}
+
+/* <700: simple vertical stack — no extreme-phone tuning */
+@media (max-width: 699px) {
   .app {
     height: auto;
     min-height: calc(100vh - 40px);
@@ -190,18 +205,14 @@
   .codePane {
     border-right: none;
     border-bottom: 1px solid var(--line);
-    height: 240px;
-    min-height: 200px;
+    height: 220px;
+    min-height: 180px;
     flex-shrink: 0;
-  }
-
-  .editorHost {
-    min-height: 160px;
   }
 
   .vizPane {
     width: 100%;
-    min-height: 320px;
+    min-height: 240px;
     overflow: visible;
     flex: 1 0 auto;
   }
@@ -216,9 +227,11 @@
     max-height: none;
   }
 
-  .insCol + .insCol {
+  .insCol + .insCol,
+  .insCol:last-child {
     border-left: none;
     border-top: 1px solid var(--line);
+    grid-column: auto;
   }
 
   .errorBanner {
