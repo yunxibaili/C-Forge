@@ -7,3 +7,6 @@ dist/
 .DS_Store
 backend/.venv/
 _dbg/
+_vite.log
+.playwright-mcp/
+frontend/dist/

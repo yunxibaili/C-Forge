@@ -1,0 +1,133 @@
+.bar {
+  display: grid;
+  grid-template-columns: auto 1fr minmax(220px, 340px);
+  align-items: center;
+  gap: 16px;
+  padding: 0 16px;
+  background: #0d1117;
+  border-top: 1px solid #1c2230;
+}
+
+.transport {
+  display: flex;
+  gap: 6px;
+}
+
+.tbtn {
+  width: 36px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid #232a38;
+  background: #121826;
+  color: #9fb0c7;
+  font-size: 13px;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.tbtn:hover:not(:disabled) {
+  background: #1a2233;
+  color: #e6edf3;
+}
+
+.tbtnActive {
+  background: rgba(79, 209, 197, 0.15);
+  border-color: rgba(79, 209, 197, 0.5);
+  color: #4fd1c5;
+}
+
+.trackArea {
+  position: relative;
+  height: 42px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.track {
+  position: relative;
+  height: 14px;
+  background: #121826;
+  border: 1px solid #1f2637;
+  border-radius: 7px;
+}
+
+.ticks {
+  position: absolute;
+  inset: 0;
+  border-radius: 7px;
+  overflow: hidden;
+}
+
+.tick {
+  position: absolute;
+  top: 2px;
+  width: 2px;
+  height: 10px;
+  transform: translateX(-1px);
+  opacity: 0.75;
+  border-radius: 1px;
+}
+
+.tickActive {
+  opacity: 1;
+  height: 10px;
+  top: 2px;
+  box-shadow: 0 0 6px rgba(230, 237, 243, 0.8);
+}
+
+.thumb {
+  position: absolute;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
+  border-radius: 50%;
+  background: #e6edf3;
+  border: 3px solid #4fd1c5;
+  transform: translateY(-50%);
+  pointer-events: none;
+  box-shadow: 0 0 10px rgba(79, 209, 197, 0.55);
+  transition: left 0.12s linear;
+}
+
+.range {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  margin: 0;
+}
+
+.range:disabled {
+  cursor: not-allowed;
+}
+
+.scale {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #3f4a61;
+  font-family: Consolas, monospace;
+  margin-top: 4px;
+}
+
+.label {
+  font-family: Consolas, monospace;
+  font-size: 12px;
+  color: #7d8ba3;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .bar {
+    grid-template-columns: auto 1fr;
+  }
+  .label {
+    display: none;
+  }
+}

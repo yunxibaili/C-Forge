@@ -31,3 +31,9 @@ def run(req: RunRequest):
     if len(code) > 20000:
         return {"ok": False, "events": [], "stats": {}, "compile_error": "source too large", "trace_error": None, "truncated": False}
     return trace_source(code)
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(app, host="127.0.0.1", port=8000)
