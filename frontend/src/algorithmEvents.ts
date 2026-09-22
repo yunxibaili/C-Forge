@@ -143,6 +143,11 @@ function applyWriteFromLine(
   if (val !== null) arr.elems[idx] = val;
 }
 
+function snapshotArr(arr: ArrayInfo | null): ArrayInfo | null {
+  if (!arr) return null;
+  return { ...arr, elems: [...arr.elems] };
+}
+
 export interface TraceState {
   tops: (number | null)[];
   fronts: (number | null)[];
@@ -156,7 +161,7 @@ export interface TraceState {
 /**
  * One forward pass over real TraceEvents.
  * Resolves top/front/rear across pointer frames (int *top args) via line_text deltas,
- * snapshots arrays and applies real array writes observed while callees run.
+ * snapshots arrays immutably, and applies real array writes observed while callees run.
  */
 export function buildTraceState(events: TraceEvent[]): TraceState {
   const tops: (number | null)[] = [];
@@ -177,7 +182,7 @@ export function buildTraceState(events: TraceEvent[]): TraceState {
 
   for (const ev of events) {
     const curArr = firstArray(ev);
-    if (curArr) arr = { ...curArr, elems: [...curArr.elems] };
+    if (curArr) arr = snapshotArr(curArr);
 
     const nTop = numVar(ev, "top", "tp");
     const nFront = numVar(ev, "front", "f");
@@ -227,19 +232,24 @@ export function buildTraceState(events: TraceEvent[]): TraceState {
     lows.push(low);
     highs.push(high);
     mids.push(mid);
-    arrays.push(arr);
+    arrays.push(snapshotArr(arr));
   }
 
   return { tops, fronts, rears, lows, highs, mids, arrays };
 }
 
+function elemAt(a: ArrayInfo | null, idx: number): number | string | null {
+  if (!a || idx < 0 || idx >= a.elems.length) return null;
+  return a.elems[idx];
+}
+
 /**
- * Pure frontend interpreter: TraceEvent[] -> AlgorithmEvent[].
- * Derives higher-level ops from real trace state only — no fabricated animation.
+ * Pure frontend interpreter: TraceEvent[] + TraceState -> AlgorithmEvent[].
+ * Structural ops (push/enqueue) fire on real top/front/rear deltas even before an
+ * array snapshot exists — value falls back to callee parameters when needed.
  */
-export function toAlgorithmEvents(events: TraceEvent[]): AlgorithmEvent[] {
+export function toAlgorithmEvents(events: TraceEvent[], st: TraceState): AlgorithmEvent[] {
   const out: AlgorithmEvent[] = [];
-  const st = buildTraceState(events);
 
   for (let i = 0; i < events.length; i++) {
     const ev = events[i];
@@ -258,15 +268,15 @@ export function toAlgorithmEvents(events: TraceEvent[]): AlgorithmEvent[] {
     const pLo = i > 0 ? st.lows[i - 1] : null;
     const pHi = i > 0 ? st.highs[i - 1] : null;
 
-    // --- stack: top changed ---
-    if (top !== null && prev && prevTop !== null && arr && prevArr) {
+    // --- stack: top changed (works without array snapshot) ---
+    if (top !== null && prev && prevTop !== null && top !== prevTop) {
       if (top === prevTop + 1) {
         out.push({
           type: "push",
           step: ev.step,
           stackTop: top,
           indices: [prevTop],
-          value: arr.elems[prevTop] ?? null,
+          value: elemAt(arr, prevTop) ?? numVar(ev, "v", "val", "value") ?? null,
         });
         continue;
       }
@@ -276,22 +286,33 @@ export function toAlgorithmEvents(events: TraceEvent[]): AlgorithmEvent[] {
           step: ev.step,
           stackTop: top,
           indices: [top],
-          value: prevArr.elems[top] ?? null,
+          value: elemAt(arr, top) ?? elemAt(prevArr, top) ?? null,
         });
         continue;
       }
-      if (top > 0 && isCompareLine(ev.line_text, arr.name || "st") && ev.event === "compare") {
+      if (arr && top > 0 && isCompareLine(ev.line_text, arr.name || "st") && ev.event === "compare") {
         const idxs = compareIndicesFromLine(ev.line_text, arr.name || "st", ev);
         if (idxs.length && idxs[0] === top - 1) {
-          out.push({ type: "visit", step: ev.step, indices: idxs, stackTop: top, value: arr.elems[idxs[0]] ?? null });
+          out.push({ type: "visit", step: ev.step, indices: idxs, stackTop: top, value: elemAt(arr, idxs[0]) });
           continue;
         }
       }
     }
 
-    // --- queue: front/rear ---
-    if (front !== null && rear !== null && prev && pf !== null && pr !== null && arr) {
+    // --- queue: front/rear changed (works without array snapshot) ---
+    if (front !== null && rear !== null && prev && pf !== null && pr !== null) {
       if (rear !== pr) {
+        if (!arr) {
+          out.push({
+            type: "enqueue",
+            step: ev.step,
+            queueFront: front,
+            queueRear: rear,
+            indices: [pr],
+            value: numVar(ev, "v", "val", "value") ?? null,
+          });
+          continue;
+        }
         const cap = arr.length || 1;
         const wroteIdx = ((pr % cap) + cap) % cap;
         if (ev.event === "write" || ev.event === "array_write" || rear === ((pr + 1) % cap)) {
@@ -301,12 +322,23 @@ export function toAlgorithmEvents(events: TraceEvent[]): AlgorithmEvent[] {
             queueFront: front,
             queueRear: rear,
             indices: [wroteIdx],
-            value: arr.elems[wroteIdx] ?? null,
+            value: elemAt(arr, wroteIdx),
           });
           continue;
         }
       }
       if (front !== pf) {
+        if (!arr) {
+          out.push({
+            type: "dequeue",
+            step: ev.step,
+            queueFront: front,
+            queueRear: rear,
+            indices: [pf],
+            value: numVar(ev, "v", "val") ?? null,
+          });
+          continue;
+        }
         const cap = arr.length || 1;
         const readIdx = ((pf % cap) + cap) % cap;
         if (front === ((pf + 1) % cap) || ev.event === "return" || ev.event === "step") {
@@ -316,7 +348,7 @@ export function toAlgorithmEvents(events: TraceEvent[]): AlgorithmEvent[] {
             queueFront: front,
             queueRear: rear,
             indices: [readIdx],
-            value: prevArr?.elems[readIdx] ?? null,
+            value: elemAt(prevArr, readIdx) ?? elemAt(arr, readIdx),
           });
           continue;
         }
@@ -332,7 +364,7 @@ export function toAlgorithmEvents(events: TraceEvent[]): AlgorithmEvent[] {
           type: "compare",
           step: ev.step,
           indices: cmpIdx,
-          value: arr.elems[cmpIdx[0]] ?? null,
+          value: elemAt(arr, cmpIdx[0]),
           range: { low, mid, high },
         });
         continue;
@@ -348,16 +380,26 @@ export function toAlgorithmEvents(events: TraceEvent[]): AlgorithmEvent[] {
       }
     }
 
-    // --- generic from backend event labels ---
+    // --- generic from backend event labels / real line text ---
     if (ev.event === "swap" && ev.swap) {
       out.push({ type: "swap", step: ev.step, indices: [ev.swap.i, ev.swap.j] });
       continue;
     }
-    if (ev.event === "compare" && arr && isCompareLine(ev.line_text, arr.name)) {
+    // Array element compare from real line (e.g. a[j] > a[j+1]), even if backend labeled write/step.
+    if (arr && isCompareLine(ev.line_text, arr.name)) {
       out.push({
         type: "compare",
         step: ev.step,
         indices: compareIndicesFromLine(ev.line_text, arr.name, ev),
+      });
+      continue;
+    }
+    // Backend classify() compare (loop conditions etc.) — still a real compare from the trace.
+    if (ev.event === "compare") {
+      out.push({
+        type: "compare",
+        step: ev.step,
+        indices: arr ? compareIndicesFromLine(ev.line_text, arr.name, ev) : undefined,
       });
       continue;
     }
@@ -411,9 +453,7 @@ export function summarizeAlgorithmEvents(events: AlgorithmEvent[]): AlgorithmSta
 export type AlgorithmKind = "stack" | "queue" | "binary_search" | "none";
 
 /** Detect which specialized structure view applies for a run (from real vars). */
-export function detectAlgorithmKind(events: TraceEvent[]): AlgorithmKind {
-  const st = buildTraceState(events);
-  const n = Math.max(1, events.length);
+export function detectAlgorithmKind(events: TraceEvent[], st: TraceState): AlgorithmKind {
   let stackVotes = 0;
   let queueVotes = 0;
   let searchVotes = 0;

@@ -554,14 +554,18 @@ export default function Viz({ result, index }: { result: RunResult | null; index
   const { order, slot } = useMemo(() => buildSlots(events, i), [events, i]);
   const ft = useMemo(() => buildFrames(events, i), [events, i]);
   const ftPrev = useMemo(() => buildFrames(events, Math.max(0, i - 1)), [events, i]);
-  const algoKind = useMemo(() => detectAlgorithmKind(events), [events]);
   const traceState = useMemo(() => buildTraceState(events), [events]);
-  const algoEvents = useMemo(() => toAlgorithmEvents(events), [events]);
-  const algoStats = useMemo(() => summarizeAlgorithmEvents(algoEvents), [algoEvents]);
+  const algoKind = useMemo(() => detectAlgorithmKind(events, traceState), [events, traceState]);
+  const algoEvents = useMemo(() => toAlgorithmEvents(events, traceState), [events, traceState]);
   const activeAlgo = useMemo(
     () => algoEvents.find((a) => a.step === (ev?.step ?? -1)) ?? null,
     [algoEvents, ev]
   );
+  // Single authoritative stats: AlgorithmEvents up to the current step only.
+  const statsNow = useMemo(() => {
+    const step = ev?.step ?? -1;
+    return summarizeAlgorithmEvents(algoEvents.filter((a) => a.step <= step));
+  }, [algoEvents, ev]);
 
   if (!ev || !result) {
     return (
@@ -576,9 +580,8 @@ export default function Viz({ result, index }: { result: RunResult | null; index
     );
   }
 
-  const st = ev.stats ?? { comparisons: 0, swaps: 0, visits: 0 };
   const isLast = i >= events.length - 1;
-  const showSorted = isLast && st.swaps > 0;
+  const showSorted = isLast && statsNow.swaps > 0;
 
   const arr0 = traceState.arrays[i] ?? ev.arrays[0] ?? null;
   const topVal = traceState.tops[i];
@@ -611,13 +614,13 @@ export default function Viz({ result, index }: { result: RunResult | null; index
   ].filter(Boolean).length;
 
   const showComplexity =
-    algoStats.comparisons > 0 ||
-    algoStats.swaps > 0 ||
-    algoStats.writes > 0 ||
-    algoStats.pushes > 0 ||
-    algoStats.pops > 0 ||
-    algoStats.enqueues > 0 ||
-    algoStats.dequeues > 0;
+    statsNow.comparisons > 0 ||
+    statsNow.swaps > 0 ||
+    statsNow.writes > 0 ||
+    statsNow.pushes > 0 ||
+    statsNow.pops > 0 ||
+    statsNow.enqueues > 0 ||
+    statsNow.dequeues > 0;
 
   return (
     <div className={styles.wrap}>
@@ -625,8 +628,10 @@ export default function Viz({ result, index }: { result: RunResult | null; index
         <span className={styles.vizLabel}>visualization</span>
         <span className={styles.vizMeta}>
           <span>{ev.function} · L{ev.line}</span>
-          {st.comparisons > 0 && <span className={styles.statC}>COMPARE {st.comparisons}</span>}
-          {st.swaps > 0 && <span className={styles.statS}>SWAP {st.swaps}</span>}
+          {statsNow.comparisons > 0 && (
+            <span className={styles.statC}>COMPARE {statsNow.comparisons}</span>
+          )}
+          {statsNow.swaps > 0 && <span className={styles.statS}>SWAP {statsNow.swaps}</span>}
           {activeAlgo && activeAlgo.type !== "range" && (
             <span className={styles.statC}>{activeAlgo.type.toUpperCase()}</span>
           )}
@@ -635,7 +640,7 @@ export default function Viz({ result, index }: { result: RunResult | null; index
           )}
           {showSorted && (
             <span className={styles.sorted}>
-              SORTED · {st.swaps} swaps · {st.comparisons} comparisons
+              SORTED · {statsNow.swaps} swaps · {statsNow.comparisons} comparisons
             </span>
           )}
         </span>
@@ -716,8 +721,8 @@ export default function Viz({ result, index }: { result: RunResult | null; index
         )}
         {showComplexity && (
           <div className={styles.stageBlock}>
-            <span className={styles.stageTag}>complexity · real run stats</span>
-            <ComplexityBar stats={algoStats} />
+            <span className={styles.stageTag}>complexity · algorithm stats</span>
+            <ComplexityBar stats={statsNow} />
           </div>
         )}
         {sections === 0 && !showComplexity && (
