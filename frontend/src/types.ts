@@ -70,3 +70,19 @@ export interface RunResult {
   trace_error: string | null;
   truncated: boolean;
 }
+
+export interface StackFrameView {
+  id: string;
+  name: string;
+  depth: number;
+  callLine: number | null;
+  callLineText: string | null;
+  returnTo: string | null;
+  returnLine: number | null;
+  isInnermost: boolean;
+  vars: Record<string, VarMeta>;
+  pointers: PointerInfo[];
+  line: number | null;
+  enteredAt: number;
+  exitedAt: number | null;
+}

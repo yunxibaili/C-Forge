@@ -3,9 +3,11 @@ import type {
   LinkedList,
   PointerInfo,
   RunResult,
+  StackFrameView,
   TraceEvent,
   VarMeta,
 } from "../types";
+import { buildFrames, splitVars } from "../frames";
 import styles from "./Viz.module.css";
 
 /* ---------- helpers ---------- */
@@ -408,6 +410,129 @@ function LinkedListView({ ev, prev }: { ev: TraceEvent; prev: TraceEvent | null 
   );
 }
 
+/* ── stack frames ── */
+function ptrFor(f: StackFrameView, name: string): PointerInfo | undefined {
+  return f.pointers.find((p) => p.name === name);
+}
+
+function StackFrames({
+  frames,
+  prevFrames,
+  transition,
+  popped,
+  ev,
+}: {
+  frames: StackFrameView[];
+  prevFrames: StackFrameView[];
+  transition: "call" | "return" | "none";
+  popped: StackFrameView[] | null;
+  ev: TraceEvent;
+}) {
+  const prevIds = new Set(prevFrames.map((f) => f.id));
+  const shown = [...frames].reverse();
+  const popping = popped ?? [];
+
+  return (
+    <div className={styles.stackCol}>
+      {popping.map((f) => (
+        <div key={`pop-${f.id}`} className={`${styles.frameCard} ${styles.framePop}`}>
+          <div className={styles.frameHead}>
+            <span className={styles.frameName}>{f.name}()</span>
+            <span className={styles.frameBadgePop}>return</span>
+          </div>
+          <div className={styles.frameRet}>← frame destroyed</div>
+        </div>
+      ))}
+      {shown.map((f) => {
+        const isNew = !prevIds.has(f.id) && transition === "call";
+        const { params, locals } = splitVars(f.vars);
+        let cls = styles.frameCard;
+        if (f.isInnermost) cls += " " + styles.frameCur;
+        if (isNew) cls += " " + styles.frameEnter;
+        const ptrNames = new Set(f.pointers.map((p) => p.name));
+        const retLabel =
+          f.depth > 0
+            ? `ret → ${frames[f.depth - 1]?.name ?? "caller"}`
+            : "entry";
+
+        return (
+          <div key={f.id} className={cls}>
+            <div className={styles.frameHead}>
+              <span className={styles.frameName}>{f.name}()</span>
+              <span className={styles.frameDepth}>depth {f.depth}</span>
+              {f.isInnermost ? (
+                <span className={styles.frameBadge}>active</span>
+              ) : isNew ? (
+                <span className={styles.frameBadgeCall}>CALL</span>
+              ) : null}
+            </div>
+            {f.callLine != null && f.depth > 0 && (
+              <div className={styles.frameCall}>called @ L{f.callLine}</div>
+            )}
+            {params.length > 0 && (
+              <div className={styles.frameSec}>
+                <div className={styles.frameSecLabel}>parameters</div>
+                {params.map(([k, v]) => {
+                  const p = ptrFor(f, k);
+                  return (
+                    <div key={k} className={`${styles.varRow}${p ? " " + styles.varPtr : ""}`}>
+                      <span className={styles.varName}>{k}</span>
+                      <span className={styles.varEq}>=</span>
+                      <span className={styles.varVal}>
+                        {p ? (p.null ? "NULL" : p.value) : fmtVar(v)}
+                      </span>
+                      {p && !p.null && (
+                        <span className={styles.varArrow}>
+                          → {p.target ?? `0x${p.target_addr.toString(16)}`}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {locals.length > 0 && (
+              <div className={styles.frameSec}>
+                <div className={styles.frameSecLabel}>locals</div>
+                {locals.map(([k, v]) => {
+                  const p = ptrFor(f, k);
+                  const moved = ev.event === "pointer_move" && f.isInnermost && ptrNames.has(k);
+                  return (
+                    <div
+                      key={k}
+                      className={`${styles.varRow}${p ? " " + styles.varPtr : ""}${moved ? " " + styles.varFlash : ""}`}
+                    >
+                      <span className={styles.varName}>{k}</span>
+                      <span className={styles.varEq}>=</span>
+                      <span className={styles.varVal}>
+                        {p ? (p.null ? "NULL" : p.value) : fmtVar(v)}
+                      </span>
+                      {p && !p.null && (
+                        <span className={styles.varArrow}>
+                          → {p.target ?? `0x${p.target_addr.toString(16)}`}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {params.length === 0 && locals.length === 0 && (
+              <div className={styles.frameEmpty}>no symbols yet</div>
+            )}
+            <div className={styles.frameFoot}>
+              <span className={styles.frameRet}>{retLabel}</span>
+              {f.line != null && f.isInnermost && (
+                <span className={styles.frameLine}>L{f.line}</span>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 /* ── main viz ── */
 export default function Viz({ result, index }: { result: RunResult | null; index: number }) {
   const events = result?.events ?? [];
@@ -415,6 +540,8 @@ export default function Viz({ result, index }: { result: RunResult | null; index
   const ev = events.length ? events[i] : null;
   const prev = ev && i > 0 ? events[i - 1] : null;
   const { order, slot } = useMemo(() => buildSlots(events, i), [events, i]);
+  const ft = useMemo(() => buildFrames(events, i), [events, i]);
+  const ftPrev = useMemo(() => buildFrames(events, Math.max(0, i - 1)), [events, i]);
 
   if (!ev || !result) {
     return (
@@ -437,8 +564,11 @@ export default function Viz({ result, index }: { result: RunResult | null; index
     (ev.pointers.length > 0 || Object.keys(ev.variables).length > 0) && ev.linked_lists.length === 0;
   const hasArray = ev.arrays.length > 0;
   const hasList = ev.linked_lists.length > 0;
+  const hasStack =
+    ft.frames.length > 0 &&
+    (ft.maxDepth > 1 || ft.frames.length > 1 || ft.lastTransition !== "none");
 
-  const sections = [hasPointerView, hasArray, hasList].filter(Boolean).length;
+  const sections = [hasPointerView, hasArray, hasList, hasStack].filter(Boolean).length;
 
   return (
     <div className={styles.wrap}>
@@ -448,11 +578,34 @@ export default function Viz({ result, index }: { result: RunResult | null; index
           <span>{ev.function} · L{ev.line}</span>
           <span className={styles.statC}>COMPARE {st.comparisons}</span>
           <span className={styles.statS}>SWAP {st.swaps}</span>
-          {showSorted && <span className={styles.sorted}>SORTED · {st.swaps} swaps · {st.comparisons} comparisons</span>}
+          {ft.frames.length > 1 && (
+            <span className={styles.stackDepthTag}>stack {ft.frames.length}</span>
+          )}
+          {showSorted && (
+            <span className={styles.sorted}>
+              SORTED · {st.swaps} swaps · {st.comparisons} comparisons
+            </span>
+          )}
         </span>
       </div>
 
       <div className={styles.stage}>
+        {hasStack && (
+          <div className={styles.stageBlock}>
+            <span className={styles.stageTag}>
+              call stack · {ft.frames.length} frame{ft.frames.length === 1 ? "" : "s"}
+              {ft.lastTransition === "call" && " · CALL"}
+              {ft.lastTransition === "return" && " · RETURN"}
+            </span>
+            <StackFrames
+              frames={ft.frames}
+              prevFrames={ftPrev.frames}
+              transition={ft.lastTransition}
+              popped={ft.popped}
+              ev={ev}
+            />
+          </div>
+        )}
         {hasPointerView && (
           <div className={styles.stageBlock}>
             <span className={styles.stageTag}>memory · pointers</span>

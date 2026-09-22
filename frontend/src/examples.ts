@@ -95,6 +95,23 @@ int main(void) {
 `,
   },
   {
+    id: "recursion",
+    name: "Recursion",
+    code: `#include <stdio.h>
+
+int fact(int n) {
+    if (n <= 1) return 1;
+    return n * fact(n - 1);
+}
+
+int main(void) {
+    int r = fact(4);
+    printf("4!=%d\\n", r);
+    return 0;
+}
+`,
+  },
+  {
     id: "bubble",
     name: "Bubble Sort",
     code: `#include <stdio.h>
