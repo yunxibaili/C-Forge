@@ -75,6 +75,9 @@ export default function ProblemDetail({ route }: { route: Extract<Route, { name:
               >
                 {problem.difficulty}
               </span>
+              <span>
+                exam: {problem.examRelevance === "high" ? "重点" : problem.examRelevance}
+              </span>
               <span>{src?.label ?? problem.source}</span>
               {problem.topics.map((t) => (
                 <span key={t} className={styles.topicTag}>

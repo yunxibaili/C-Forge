@@ -8,24 +8,35 @@ export const TOPICS = [
   "Pointer",
   "Function",
   "Struct",
+  "Recursion",
   "Linked List",
   "Stack",
   "Queue",
   "Tree",
+  "Graph",
   "Search",
   "Sort",
+  "Traversal",
+  "Complexity",
 ] as const;
 
 export type Topic = (typeof TOPICS)[number];
 
 export const SOURCES = [
+  { id: "gd", label: "Guangdong Exam" },
   { id: "rookie", label: "Rookie" },
   { id: "fundamentals", label: "Fundamentals" },
   { id: "pta", label: "PTA" },
+  { id: "leetcode", label: "LeetCode" },
+  { id: "nowcoder", label: "NowCoder" },
   { id: "self", label: "C-Forge" },
 ] as const;
 
 export type SourceId = (typeof SOURCES)[number]["id"];
+
+export type ExamRelevance = "high" | "medium" | "low";
+
+export const EXAM_RELEVANCES: readonly ExamRelevance[] = ["high", "medium", "low"];
 
 export interface Problem {
   id: string;
@@ -33,9 +44,12 @@ export interface Problem {
   title: string;
   difficulty: Difficulty;
   topics: Topic[];
+  examRelevance: ExamRelevance;
   url: string;
   description: string;
   code: string;
+  visualizable?: boolean;
+  recommendedOrder?: number;
 }
 
 const byExample = (id: string): string => {
