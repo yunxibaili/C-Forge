@@ -3,12 +3,19 @@ import Home from "./pages/Home";
 import Problems from "./pages/Problems";
 import ProblemDetail from "./pages/ProblemDetail";
 import { useRoute } from "./router";
-import { takePlaygroundSeed } from "./playgroundSeed";
+import { peekPlaygroundSeed, clearPlaygroundSeed } from "./playgroundSeed";
 import { Shell } from "./pages/Home";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 function PlaygroundPage() {
-  const [seed] = useState(() => takePlaygroundSeed());
+  const [seed, setSeed] = useState(() => peekPlaygroundSeed());
+  useEffect(() => {
+    const s = peekPlaygroundSeed();
+    if (s !== null) {
+      setSeed(s);
+      clearPlaygroundSeed();
+    }
+  }, []);
   return (
     <Shell active="playground">
       <div style={{ height: "calc(100vh - 40px)", minHeight: 0 }}>

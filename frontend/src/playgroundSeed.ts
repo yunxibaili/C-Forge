@@ -4,8 +4,10 @@ export function setPlaygroundSeed(code: string) {
   seed = code;
 }
 
-export function takePlaygroundSeed(): string | null {
-  const s = seed;
+export function peekPlaygroundSeed(): string | null {
+  return seed;
+}
+
+export function clearPlaygroundSeed() {
   seed = null;
-  return s;
 }
