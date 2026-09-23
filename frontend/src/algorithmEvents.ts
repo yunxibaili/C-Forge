@@ -30,7 +30,9 @@ export interface AlgorithmEvent {
  * comparisons: target-array element comparisons (a[i] vs a[j], a[mid] vs key).
  *   Requires >=1 resolved index into the target array. Excludes loop conditions,
  *   output loops, scalar/control-flow compares (they emit no AlgorithmEvent).
- * writes: target-array element assignments only (`arr[idx] = ...`).
+ * writes: non-structural target-array element assignments only (`a[idx] = ...`).
+ *   Structural maintenance writes (`st[*top] = v`, `q[*rear] = v`) are represented
+ *   by PUSH/ENQUEUE and never emit WRITE — no double counting.
  *   Excludes scalar writes, loop vars, printf, temporaries.
  *   Field name stays `writes` for API simplicity; meaning is array-element writes.
  *   push/pop/enqueue/dequeue count under their own fields, never here.
@@ -120,6 +122,27 @@ function arrayWriteIndexFromLine(
   else idx = resolveIndex(ev, idxExpr);
   if (idx === null || idx < 0 || idx >= arr.elems.length) return null;
   return idx;
+}
+
+/**
+ * Structural maintenance write: LHS index is a structure cursor (*top/*front/*rear…).
+ * Already represented by PUSH/ENQUEUE — must not emit AlgorithmEvent WRITE.
+ */
+function isStructuralMaintenanceWrite(line: string): boolean {
+  const m = line.trim().match(/^\w+\s*\[([^\]]+)\]\s*=(?!=)/);
+  if (!m) return false;
+  const s = m[1].replace(/\s+/g, "");
+  return (
+    s === "*top" ||
+    s === "*tp" ||
+    s === "(*top)++" ||
+    s === "(*tp)++" ||
+    s === "*front" ||
+    s === "*f" ||
+    s === "*rear" ||
+    s === "*r" ||
+    s === "*back"
+  );
 }
 
 function topDeltaFromLine(line: string): number | null {
@@ -427,9 +450,9 @@ export function toAlgorithmEvents(events: TraceEvent[], st: TraceState): Algorit
         continue;
       }
     }
-    // Algorithm write: only `arr[idx] = ...` into the target array (not scalar/loop/printf).
-    // push/pop/enqueue/dequeue already handled above; their structural ops keep their own counters.
-    if (arr) {
+    // Algorithm write: non-structural `a[idx] = ...` only (not scalar/loop/printf).
+    // Structural `st[*top]=v` / `q[*rear]=v` already counted as PUSH/ENQUEUE — skip WRITE.
+    if (arr && !isStructuralMaintenanceWrite(ev.line_text)) {
       const wIdx = arrayWriteIndexFromLine(ev.line_text, arr, ev, {
         top: top ?? null,
         front: front ?? null,
