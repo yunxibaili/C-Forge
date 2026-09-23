@@ -22,6 +22,19 @@ export interface AlgorithmEvent {
   queueRear?: number;
 }
 
+/**
+ * AlgorithmStats counts core algorithm operations only — not every compare/write
+ * the program executed. Derived solely from AlgorithmEvent (single authoritative path:
+ * TraceEvent → AlgorithmEvent → AlgorithmStats → Viz/badges/ComplexityBar).
+ *
+ * comparisons: target-array element comparisons (a[i] vs a[j], a[mid] vs key).
+ *   Requires >=1 resolved index into the target array. Excludes loop conditions,
+ *   output loops, scalar/control-flow compares (they emit no AlgorithmEvent).
+ * writes: target-array element assignments only (`arr[idx] = ...`).
+ *   Excludes scalar writes, loop vars, printf, temporaries.
+ *   Field name stays `writes` for API simplicity; meaning is array-element writes.
+ *   push/pop/enqueue/dequeue count under their own fields, never here.
+ */
 export interface AlgorithmStats {
   comparisons: number;
   swaps: number;
@@ -85,7 +98,28 @@ function compareIndicesFromLine(line: string, arrName: string, ev: TraceEvent): 
 }
 
 function isCompareLine(line: string, arrName: string): boolean {
-  return new RegExp(`${arrName}\\[[^\\]]+\\]\\s*[<>]=?|${arrName}\\[[^\\]]+\\]\\s*==`).test(line);
+  return new RegExp(`${arrName}\\[[^\\]]+\\]\\s*(==|!=|<=|>=|<|>)`).test(line);
+}
+
+/** Assignment to a target-array element: `arr[idx] = rhs`. Null if not an element write. */
+function arrayWriteIndexFromLine(
+  line: string,
+  arr: ArrayInfo,
+  ev: TraceEvent,
+  counters: { top: number | null; front: number | null; rear: number | null }
+): number | null {
+  const m = line.trim().match(/^(\w+)\s*\[([^\]]+)\]\s*=(?!=)/);
+  if (!m || m[1] !== arr.name) return null;
+  const idxExpr = m[2].replace(/\s+/g, "");
+  let idx: number | null = null;
+  if (/^-?\d+$/.test(idxExpr)) idx = parseInt(idxExpr, 10);
+  else if (idxExpr === "*top" || idxExpr === "*tp" || idxExpr === "(*top)++" || idxExpr === "(*tp)++")
+    idx = counters.top;
+  else if (idxExpr === "*front" || idxExpr === "*f") idx = counters.front;
+  else if (idxExpr === "*rear" || idxExpr === "*r" || idxExpr === "*back") idx = counters.rear;
+  else idx = resolveIndex(ev, idxExpr);
+  if (idx === null || idx < 0 || idx >= arr.elems.length) return null;
+  return idx;
 }
 
 function topDeltaFromLine(line: string): number | null {
@@ -355,16 +389,15 @@ export function toAlgorithmEvents(events: TraceEvent[], st: TraceState): Algorit
       }
     }
 
-    // --- binary search: low/mid/high range ---
+    // --- binary search: element compare against target array only ---
     if (low !== null && high !== null && mid !== null && arr) {
-      if (ev.event === "compare" || isCompareLine(ev.line_text, arr.name || "a")) {
-        const idxs = compareIndicesFromLine(ev.line_text, arr.name || "a", ev);
-        const cmpIdx = idxs.length ? idxs : [mid];
+      const bsIdxs = compareIndicesFromLine(ev.line_text, arr.name || "a", ev);
+      if (bsIdxs.length >= 1 && (ev.event === "compare" || isCompareLine(ev.line_text, arr.name || "a"))) {
         out.push({
           type: "compare",
           step: ev.step,
-          indices: cmpIdx,
-          value: elemAt(arr, cmpIdx[0]),
+          indices: bsIdxs,
+          value: elemAt(arr, bsIdxs[0]),
           range: { low, mid, high },
         });
         continue;
@@ -385,28 +418,27 @@ export function toAlgorithmEvents(events: TraceEvent[], st: TraceState): Algorit
       out.push({ type: "swap", step: ev.step, indices: [ev.swap.i, ev.swap.j] });
       continue;
     }
-    // Array element compare from real line (e.g. a[j] > a[j+1]), even if backend labeled write/step.
-    if (arr && isCompareLine(ev.line_text, arr.name)) {
-      out.push({
-        type: "compare",
-        step: ev.step,
-        indices: compareIndicesFromLine(ev.line_text, arr.name, ev),
-      });
-      continue;
+    // Algorithm compare: target-array element vs element/value (e.g. a[j] > a[j+1], a[mid] == key).
+    // Excludes loop/output/scalar control-flow (no target-array index → not emitted).
+    if (arr) {
+      const cIdxs = compareIndicesFromLine(ev.line_text, arr.name, ev);
+      if (cIdxs.length >= 1 && isCompareLine(ev.line_text, arr.name)) {
+        out.push({ type: "compare", step: ev.step, indices: cIdxs });
+        continue;
+      }
     }
-    // Backend classify() compare (loop conditions etc.) — still a real compare from the trace.
-    if (ev.event === "compare") {
-      out.push({
-        type: "compare",
-        step: ev.step,
-        indices: arr ? compareIndicesFromLine(ev.line_text, arr.name, ev) : undefined,
+    // Algorithm write: only `arr[idx] = ...` into the target array (not scalar/loop/printf).
+    // push/pop/enqueue/dequeue already handled above; their structural ops keep their own counters.
+    if (arr) {
+      const wIdx = arrayWriteIndexFromLine(ev.line_text, arr, ev, {
+        top: top ?? null,
+        front: front ?? null,
+        rear: rear ?? null,
       });
-      continue;
-    }
-    if ((ev.event === "write" || ev.event === "array_write") && arr) {
-      const idxs = compareIndicesFromLine(ev.line_text, arr.name, ev);
-      out.push({ type: "write", step: ev.step, indices: idxs });
-      continue;
+      if (wIdx !== null) {
+        out.push({ type: "write", step: ev.step, indices: [wIdx] });
+        continue;
+      }
     }
     if (ev.event === "pointer_move") {
       out.push({ type: "visit", step: ev.step });

@@ -184,7 +184,7 @@ export function QueueView({
             >
               <span style={{ fontSize: 9, color: "var(--fg3)" }}>{i}</span>
               <span style={{ fontSize: 16, fontWeight: 700, color: inRange || isHot ? "var(--fg)" : "var(--fg3)" }}>
-                {v === null ? "?" : v}
+                {inRange || isHot ? (v === null ? "?" : v) : "—"}
               </span>
             </div>
           );
